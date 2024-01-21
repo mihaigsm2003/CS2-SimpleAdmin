@@ -1391,7 +1391,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 	}
 
 	[ConsoleCommand("css_strip")]
-	[RequiresPermissions("@css/slay")]
+	[RequiresPermissions("@css/root")]
 	[CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 	public void OnStripCommand(CCSPlayerController? caller, CommandInfo command)
 	{
@@ -1414,7 +1414,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 	}
 
 	[ConsoleCommand("css_hp")]
-	[RequiresPermissions("@css/slay")]
+	[RequiresPermissions("@css/root")]
 	[CommandHelper(minArgs: 1, usage: "<#userid or name> <health>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 	public void OnHpCommand(CCSPlayerController? caller, CommandInfo command)
 	{
@@ -1440,7 +1440,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 	}
 
 	[ConsoleCommand("css_speed")]
-	[RequiresPermissions("@css/slay")]
+	[RequiresPermissions("@css/root")]
 	[CommandHelper(minArgs: 1, usage: "<#userid or name> <speed>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 	public void OnSpeedCommand(CCSPlayerController? caller, CommandInfo command)
 	{
@@ -1685,7 +1685,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 	[ConsoleCommand("css_wsmap", "Change workshop map.")]
 	[ConsoleCommand("css_workshop", "Change workshop map.")]
 	[CommandHelper(1, "<name or id>")]
-	[RequiresPermissions("@css/changemap")]
+	[RequiresPermissions("@css/unban")]
 	public void OnWorkshopMapCommand(CCSPlayerController? caller, CommandInfo command)
 	{
 		string? _command = null;
@@ -1810,7 +1810,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 	[ConsoleCommand("css_freeze", "Freeze a player.")]
 	[CommandHelper(1, "<#userid or name> [duration]")]
-	[RequiresPermissions("@css/slay")]
+	[RequiresPermissions("@css/root")]
 	public void OnFreezeCommand(CCSPlayerController? caller, CommandInfo command)
 	{
 		int time = 0;
@@ -1837,7 +1837,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 	[ConsoleCommand("css_unfreeze", "Unfreeze a player.")]
 	[CommandHelper(1, "<#userid or name>")]
-	[RequiresPermissions("@css/slay")]
+	[RequiresPermissions("@css/root")]
 	public void OnUnfreezeCommand(CCSPlayerController? caller, CommandInfo command)
 	{
 		TargetResult? targets = GetTarget(command);
