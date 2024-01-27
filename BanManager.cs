@@ -6,10 +6,12 @@ namespace CS2_SimpleAdmin
 	internal class BanManager
 	{
 		private readonly MySqlConnection _dbConnection;
+		private readonly CS2_SimpleAdminConfig _config;
 
-		public BanManager(string connectionString)
+		public BanManager(string connectionString, CS2_SimpleAdminConfig config)
 		{
 			_dbConnection = new MySqlConnection(connectionString);
+			_config = config;
 		}
 
 		public async Task BanPlayer(PlayerInfo player, PlayerInfo issuer, string reason, int time = 0)
@@ -27,7 +29,7 @@ namespace CS2_SimpleAdmin
 			{
 				playerSteamid = player.SteamId,
 				playerName = player.Name,
-				playerIp = player.IpAddress,
+				playerIp = _config.BanType == 1 ? player.IpAddress : null,
 				adminSteamid = issuer.SteamId == null ? "Console" : issuer.SteamId,
 				adminName = issuer.Name == null ? "Console" : issuer.Name,
 				banReason = reason,
@@ -36,6 +38,8 @@ namespace CS2_SimpleAdmin
 				created = now,
 				serverid = CS2_SimpleAdmin.ServerId
 			});
+
+			await connection.CloseAsync();
 		}
 
 		public async Task AddBanBySteamid(string playerSteamId, PlayerInfo issuer, string reason, int time = 0)
@@ -62,6 +66,8 @@ namespace CS2_SimpleAdmin
 				created = now,
 				serverid = CS2_SimpleAdmin.ServerId
 			});
+
+			await connection.CloseAsync();
 		}
 
 		public async Task AddBanByIp(string playerIp, PlayerInfo issuer, string reason, int time = 0)
@@ -88,6 +94,8 @@ namespace CS2_SimpleAdmin
 				created = now,
 				serverid = CS2_SimpleAdmin.ServerId
 			});
+
+			await connection.CloseAsync();
 		}
 
 		public async Task<bool> IsPlayerBanned(PlayerInfo player)
@@ -110,6 +118,8 @@ namespace CS2_SimpleAdmin
 				banCount = await connection.ExecuteScalarAsync<int>(sql, new { PlayerSteamID = player.SteamId, PlayerIP = DBNull.Value, CurrentTime = now });
 			}
 
+			await connection.CloseAsync();
+
 			return banCount > 0;
 		}
 
@@ -130,6 +140,8 @@ namespace CS2_SimpleAdmin
 				banCount = await connection.ExecuteScalarAsync<int>(sql, new { PlayerSteamID = player.SteamId, PlayerIP = DBNull.Value });
 			}
 
+			await connection.CloseAsync();
+
 			return banCount;
 		}
 
@@ -145,6 +157,8 @@ namespace CS2_SimpleAdmin
 
 			string sqlUnban = "UPDATE sa_bans SET status = 'UNBANNED' WHERE player_steamid = @pattern OR player_name = @pattern OR player_ip = @pattern AND status = 'ACTIVE'";
 			await connection.ExecuteAsync(sqlUnban, new { pattern = playerPattern });
+
+			await connection.CloseAsync();
 		}
 
 		public async Task ExpireOldBans()
@@ -154,6 +168,8 @@ namespace CS2_SimpleAdmin
 
 			string sql = "UPDATE sa_bans SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND `duration` > 0 AND ends <= @CurrentTime";
 			await connection.ExecuteAsync(sql, new { CurrentTime = DateTime.Now });
+
+			await connection.CloseAsync();
 		}
 	}
 }

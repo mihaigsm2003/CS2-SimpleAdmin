@@ -18,13 +18,12 @@ using System.Text;
 
 namespace CS2_SimpleAdmin;
 
-[MinimumApiVersion(142)]
+[MinimumApiVersion(159)]
 public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdminConfig>
 {
 	public static IStringLocalizer? _localizer;
 	public static ConcurrentBag<ushort> gaggedPlayers = new ConcurrentBag<ushort>();
 	//public static ConcurrentBag<int> mutedPlayers = new ConcurrentBag<int>();
-	public static List<int> loadedPlayers = new List<int>();
 	public static Dictionary<string, int> voteAnswers = new Dictionary<string, int>();
 	public static HashSet<ushort> godPlayers = new HashSet<ushort>();
 	public static List<ushort> silentPlayers = new List<ushort>();
@@ -37,7 +36,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 	public override string ModuleName => "CS2-SimpleAdmin";
 	public override string ModuleDescription => "Simple admin plugin for Counter-Strike 2 :)";
 	public override string ModuleAuthor => "daffyy";
-	public override string ModuleVersion => "1.2.7e";
+	public override string ModuleVersion => "1.2.8c";
 
 	public CS2_SimpleAdminConfig Config { get; set; } = new();
 
@@ -303,80 +302,83 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 		if (targets == null) return;
 		List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => caller!.CanTarget(player) && player != null && player.IsValid && !player.IsBot && !player.IsHLTV).ToList();
 
-		BanManager _banManager = new(dbConnectionString);
+		BanManager _banManager = new(dbConnectionString, Config);
 		MuteManager _muteManager = new(dbConnectionString);
 
 		playersToTarget.ForEach(player =>
 		{
-			PlayerInfo playerInfo = new PlayerInfo
+			if (caller!.CanTarget(player))
 			{
-				UserId = player.UserId,
-				Index = (int)player.Index,
-				SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
-				Name = player?.PlayerName,
-				IpAddress = player?.IpAddress?.Split(":")[0]
-			};
-
-			Task.Run(async () =>
-			{
-				int totalBans = 0;
-				int totalMutes = 0;
-
-				totalBans = await _banManager.GetPlayerBans(playerInfo);
-				totalMutes = await _muteManager.GetPlayerMutes(playerInfo.SteamId!);
-
-				Server.NextFrame(() =>
+				PlayerInfo playerInfo = new PlayerInfo
 				{
-					if (caller != null)
+					UserId = player.UserId,
+					Index = (int)player.Index,
+					SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
+					Name = player?.PlayerName,
+					IpAddress = player?.IpAddress?.Split(":")[0]
+				};
+
+				Task.Run(async () =>
+				{
+					int totalBans = 0;
+					int totalMutes = 0;
+
+					totalBans = await _banManager.GetPlayerBans(playerInfo);
+					totalMutes = await _muteManager.GetPlayerMutes(playerInfo.SteamId!);
+
+					Server.NextFrame(() =>
 					{
-						caller!.PrintToConsole($"--------- INFO ABOUT \"{playerInfo.Name}\" ---------");
-
-						caller!.PrintToConsole($"• Clan: \"{player!.Clan}\" Name: \"{playerInfo.Name}\"");
-						caller!.PrintToConsole($"• UserID: \"{playerInfo.UserId}\"");
-						if (playerInfo.SteamId != null)
-							caller!.PrintToConsole($"• SteamID64: \"{playerInfo.SteamId}\"");
-						if (player.AuthorizedSteamID != null)
+						if (caller != null)
 						{
-							caller!.PrintToConsole($"• SteamID2: \"{player.AuthorizedSteamID.SteamId2}\"");
-							caller!.PrintToConsole($"• Community link: \"{player.AuthorizedSteamID.ToCommunityUrl()}\"");
-						}
-						if (playerInfo.IpAddress != null)
-							caller!.PrintToConsole($"• IP Address: \"{playerInfo.IpAddress}\"");
-						caller!.PrintToConsole($"• Ping: \"{player.Ping}\"");
-						if (player.AuthorizedSteamID != null)
-						{
-							caller!.PrintToConsole($"• Total Bans: \"{totalBans}\"");
-							caller!.PrintToConsole($"• Total Mutes: \"{totalMutes}\"");
-						}
+							caller!.PrintToConsole($"--------- INFO ABOUT \"{playerInfo.Name}\" ---------");
 
-						caller!.PrintToConsole($"--------- END INFO ABOUT \"{player.PlayerName}\" ---------");
-					}
-					else
-					{
-						Server.PrintToConsole($"--------- INFO ABOUT \"{playerInfo.Name}\" ---------");
+							caller!.PrintToConsole($"• Clan: \"{player!.Clan}\" Name: \"{playerInfo.Name}\"");
+							caller!.PrintToConsole($"• UserID: \"{playerInfo.UserId}\"");
+							if (playerInfo.SteamId != null)
+								caller!.PrintToConsole($"• SteamID64: \"{playerInfo.SteamId}\"");
+							if (player.AuthorizedSteamID != null)
+							{
+								caller!.PrintToConsole($"• SteamID2: \"{player.AuthorizedSteamID.SteamId2}\"");
+								caller!.PrintToConsole($"• Community link: \"{player.AuthorizedSteamID.ToCommunityUrl()}\"");
+							}
+							if (playerInfo.IpAddress != null)
+								caller!.PrintToConsole($"• IP Address: \"{playerInfo.IpAddress}\"");
+							caller!.PrintToConsole($"• Ping: \"{player.Ping}\"");
+							if (player.AuthorizedSteamID != null)
+							{
+								caller!.PrintToConsole($"• Total Bans: \"{totalBans}\"");
+								caller!.PrintToConsole($"• Total Mutes: \"{totalMutes}\"");
+							}
 
-						Server.PrintToConsole($"• Clan: \"{player!.Clan}\" Name: \"{playerInfo.Name}\"");
-						Server.PrintToConsole($"• UserID: \"{playerInfo.UserId}\"");
-						if (playerInfo.SteamId != null)
-							Server.PrintToConsole($"• SteamID64: \"{playerInfo.SteamId}\"");
-						if (player.AuthorizedSteamID != null)
-						{
-							Server.PrintToConsole($"• SteamID2: \"{player.AuthorizedSteamID.SteamId2}\"");
-							Server.PrintToConsole($"• Community link: \"{player.AuthorizedSteamID.ToCommunityUrl()}\"");
+							caller!.PrintToConsole($"--------- END INFO ABOUT \"{player.PlayerName}\" ---------");
 						}
-						if (playerInfo.IpAddress != null)
-							Server.PrintToConsole($"• IP Address: \"{playerInfo.IpAddress}\"");
-						Server.PrintToConsole($"• Ping: \"{player.Ping}\"");
-						if (player.AuthorizedSteamID != null)
+						else
 						{
-							Server.PrintToConsole($"• Total Bans: \"{totalBans}\"");
-							Server.PrintToConsole($"• Total Mutes: \"{totalMutes}\"");
-						}
+							Server.PrintToConsole($"--------- INFO ABOUT \"{playerInfo.Name}\" ---------");
 
-						Server.PrintToConsole($"--------- END INFO ABOUT \"{player.PlayerName}\" ---------");
-					}
+							Server.PrintToConsole($"• Clan: \"{player!.Clan}\" Name: \"{playerInfo.Name}\"");
+							Server.PrintToConsole($"• UserID: \"{playerInfo.UserId}\"");
+							if (playerInfo.SteamId != null)
+								Server.PrintToConsole($"• SteamID64: \"{playerInfo.SteamId}\"");
+							if (player.AuthorizedSteamID != null)
+							{
+								Server.PrintToConsole($"• SteamID2: \"{player.AuthorizedSteamID.SteamId2}\"");
+								Server.PrintToConsole($"• Community link: \"{player.AuthorizedSteamID.ToCommunityUrl()}\"");
+							}
+							if (playerInfo.IpAddress != null)
+								Server.PrintToConsole($"• IP Address: \"{playerInfo.IpAddress}\"");
+							Server.PrintToConsole($"• Ping: \"{player.Ping}\"");
+							if (player.AuthorizedSteamID != null)
+							{
+								Server.PrintToConsole($"• Total Bans: \"{totalBans}\"");
+								Server.PrintToConsole($"• Total Mutes: \"{totalMutes}\"");
+							}
+
+							Server.PrintToConsole($"--------- END INFO ABOUT \"{player.PlayerName}\" ---------");
+						}
+					});
 				});
-			});
+			}
 		});
 	}
 
@@ -430,23 +432,30 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		targets.Players.ForEach(player =>
 		{
-			player.Pawn.Value!.Freeze();
+			if (caller!.CanTarget(player))
+			{
+				if (player.PawnIsAlive)
+				{
+					player.Pawn.Value!.Freeze();
+					player.CommitSuicide(true, true);
+				}
 
-			if (command.ArgCount >= 2)
-			{
-				player.PrintToCenter(_localizer!["sa_player_kick_message", reason, caller == null ? "Console" : caller.PlayerName]);
-				AddTimer(Config.KickTime, () => Helper.KickPlayer((ushort)player.UserId!, reason));
-			}
-			else
-			{
-				AddTimer(Config.KickTime, () => Helper.KickPlayer((ushort)player.UserId!));
-			}
+				if (command.ArgCount >= 2)
+				{
+					player.PrintToCenter(_localizer!["sa_player_kick_message", reason, caller == null ? "Console" : caller.PlayerName]);
+					AddTimer(Config.KickTime, () => Helper.KickPlayer((ushort)player.UserId!, reason));
+				}
+				else
+				{
+					AddTimer(Config.KickTime, () => Helper.KickPlayer((ushort)player.UserId!));
+				}
 
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
-			{
-				StringBuilder sb = new(_localizer!["sa_prefix"]);
-				sb.Append(_localizer["sa_admin_kick_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
-				Server.PrintToChatAll(sb.ToString());
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_kick_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
@@ -477,73 +486,76 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			PlayerInfo playerInfo = new PlayerInfo
+			if (caller!.CanTarget(player))
 			{
-				SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
-				Name = player?.PlayerName,
-				IpAddress = player?.IpAddress?.Split(":")[0]
-			};
-
-			PlayerInfo adminInfo = new PlayerInfo
-			{
-				SteamId = caller?.AuthorizedSteamID?.SteamId64.ToString(),
-				Name = caller?.PlayerName,
-				IpAddress = caller?.IpAddress?.Split(":")[0]
-			};
-
-			Task.Run(async () =>
-			{
-				await _muteManager.MutePlayer(playerInfo, adminInfo, reason, time);
-			});
-
-			if (TagsDetected)
-				NativeAPI.IssueServerCommand($"css_tag_mute {player!.UserId}");
-
-			if (player != null && player.UserId != null && gaggedPlayers.Contains((ushort)player.UserId))
-				gaggedPlayers.Add((ushort)player.UserId);
-
-			if (time > 0 && time <= 30)
-			{
-				AddTimer(time * 60, () =>
+				PlayerInfo playerInfo = new PlayerInfo
 				{
-					if (player == null || !player.IsValid || player.AuthorizedSteamID == null) return;
+					SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
+					Name = player?.PlayerName,
+					IpAddress = player?.IpAddress?.Split(":")[0]
+				};
 
-					if (TagsDetected)
-						NativeAPI.IssueServerCommand($"css_tag_unmute {player.UserId}");
+				PlayerInfo adminInfo = new PlayerInfo
+				{
+					SteamId = caller?.AuthorizedSteamID?.SteamId64.ToString(),
+					Name = caller?.PlayerName,
+					IpAddress = caller?.IpAddress?.Split(":")[0]
+				};
 
-					if (player != null && player.UserId != null && gaggedPlayers.Contains((ushort)player.UserId))
+				Task.Run(async () =>
+				{
+					await _muteManager.MutePlayer(playerInfo, adminInfo, reason, time);
+				});
+
+				if (TagsDetected)
+					NativeAPI.IssueServerCommand($"css_tag_mute {player!.UserId}");
+
+				if (player != null && player.UserId != null && !gaggedPlayers.Contains((ushort)player.UserId))
+					gaggedPlayers.Add((ushort)player.UserId);
+
+				if (time > 0 && time <= 30)
+				{
+					AddTimer(time * 60, () =>
 					{
-						if (gaggedPlayers.TryTake(out ushort removedItem) && removedItem != (ushort)player.UserId)
+						if (player == null || !player.IsValid || player.AuthorizedSteamID == null) return;
+
+						if (TagsDetected)
+							NativeAPI.IssueServerCommand($"css_tag_unmute {player.UserId}");
+
+						if (player != null && player.UserId != null && gaggedPlayers.Contains((ushort)player.UserId))
 						{
-							gaggedPlayers.Add(removedItem);
+							if (gaggedPlayers.TryTake(out ushort removedItem) && removedItem != (ushort)player.UserId)
+							{
+								gaggedPlayers.Add(removedItem);
+							}
 						}
-					}
 
-					//MuteManager _muteManager = new(dbConnectionString);
-					//_ = _muteManager.UnmutePlayer(player.AuthorizedSteamID.SteamId64.ToString(), 0);
-				}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-			}
-
-			if (time == 0)
-			{
-				player!.PrintToCenter(_localizer!["sa_player_gag_message_perm", reason, caller == null ? "Console" : caller.PlayerName]);
-
-				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
-				{
-					StringBuilder sb = new(_localizer!["sa_prefix"]);
-					sb.Append(_localizer["sa_admin_gag_message_perm", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
-					Server.PrintToChatAll(sb.ToString());
+						//MuteManager _muteManager = new(dbConnectionString);
+						//_ = _muteManager.UnmutePlayer(player.AuthorizedSteamID.SteamId64.ToString(), 0);
+					}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 				}
-			}
-			else
-			{
-				player!.PrintToCenter(_localizer!["sa_player_gag_message_time", reason, time, caller == null ? "Console" : caller.PlayerName]);
 
-				if (caller == null || caller != null && caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				if (time == 0)
 				{
-					StringBuilder sb = new(_localizer!["sa_prefix"]);
-					sb.Append(_localizer["sa_admin_gag_message_time", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason, time]);
-					Server.PrintToChatAll(sb.ToString());
+					player!.PrintToCenter(_localizer!["sa_player_gag_message_perm", reason, caller == null ? "Console" : caller.PlayerName]);
+
+					if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+					{
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_gag_message_perm", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
+						Server.PrintToChatAll(sb.ToString());
+					}
+				}
+				else
+				{
+					player!.PrintToCenter(_localizer!["sa_player_gag_message_time", reason, time, caller == null ? "Console" : caller.PlayerName]);
+
+					if (caller == null || caller != null && caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+					{
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_gag_message_time", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason, time]);
+						Server.PrintToChatAll(sb.ToString());
+					}
 				}
 			}
 		});
@@ -708,7 +720,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 					if (TagsDetected)
 						NativeAPI.IssueServerCommand($"css_tag_unmute {player!.UserId}");
 
-					pattern = player.AuthorizedSteamID!.SteamId64.ToString();
+					pattern = player!.AuthorizedSteamID!.SteamId64.ToString();
 
 					found = true;
 				}
@@ -742,7 +754,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 					}
 				}
 
-				if (player.AuthorizedSteamID != null)
+				if (player!.AuthorizedSteamID != null)
 					_ = _muteManager.UnmutePlayer(player.AuthorizedSteamID.SteamId64.ToString(), 0); // Unmute by type 0 (gag)
 
 				if (TagsDetected)
@@ -780,76 +792,79 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			PlayerInfo playerInfo = new PlayerInfo
+			if (caller!.CanTarget(player))
 			{
-				SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
-				Name = player?.PlayerName,
-				IpAddress = player?.IpAddress?.Split(":")[0]
-			};
-
-			PlayerInfo adminInfo = new PlayerInfo
-			{
-				SteamId = caller?.AuthorizedSteamID?.SteamId64.ToString(),
-				Name = caller?.PlayerName,
-				IpAddress = caller?.IpAddress?.Split(":")[0]
-			};
-
-			/*
-			if (!mutedPlayers.Contains((ushort)player.UserId))
-				mutedPlayers.Add((ushort)player.UserId);
-			*/
-
-			player!.VoiceFlags = VoiceFlags.Muted;
-
-			Task.Run(async () =>
-			{
-				await _muteManager.MutePlayer(playerInfo, adminInfo, reason, time, 1);
-			});
-
-
-			if (time > 0 && time <= 30)
-			{
-				AddTimer(time * 60, () =>
+				PlayerInfo playerInfo = new PlayerInfo
 				{
-					if (player == null || !player.IsValid || player.AuthorizedSteamID == null) return;
+					SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
+					Name = player?.PlayerName,
+					IpAddress = player?.IpAddress?.Split(":")[0]
+				};
 
-					//MuteManager _muteManager = new(dbConnectionString);
-					//_ = _muteManager.UnmutePlayer(player.AuthorizedSteamID.SteamId64.ToString(), 1);
+				PlayerInfo adminInfo = new PlayerInfo
+				{
+					SteamId = caller?.AuthorizedSteamID?.SteamId64.ToString(),
+					Name = caller?.PlayerName,
+					IpAddress = caller?.IpAddress?.Split(":")[0]
+				};
 
-					/*
-					if (mutedPlayers.Contains((int)player.Index))
+				/*
+				if (!mutedPlayers.Contains((ushort)player.UserId))
+					mutedPlayers.Add((ushort)player.UserId);
+				*/
+
+				player!.VoiceFlags = VoiceFlags.Muted;
+
+				Task.Run(async () =>
+				{
+					await _muteManager.MutePlayer(playerInfo, adminInfo, reason, time, 1);
+				});
+
+
+				if (time > 0 && time <= 30)
+				{
+					AddTimer(time * 60, () =>
 					{
-						if (mutedPlayers.TryTake(out int removedItem) && removedItem != (int)player.Index)
+						if (player == null || !player.IsValid || player.AuthorizedSteamID == null) return;
+
+						//MuteManager _muteManager = new(dbConnectionString);
+						//_ = _muteManager.UnmutePlayer(player.AuthorizedSteamID.SteamId64.ToString(), 1);
+
+						/*
+						if (mutedPlayers.Contains((int)player.Index))
 						{
-							mutedPlayers.Add(removedItem);
+							if (mutedPlayers.TryTake(out int removedItem) && removedItem != (int)player.Index)
+							{
+								mutedPlayers.Add(removedItem);
+							}
 						}
-					}
-					*/
+						*/
 
-					player.VoiceFlags = VoiceFlags.Normal;
-				}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-			}
-
-			if (time == 0)
-			{
-				player!.PrintToCenter(_localizer!["sa_player_mute_message_perm", reason, caller == null ? "Console" : caller.PlayerName]);
-
-				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
-				{
-					StringBuilder sb = new(_localizer!["sa_prefix"]);
-					sb.Append(_localizer["sa_admin_mute_message_perm", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
-					Server.PrintToChatAll(sb.ToString());
+						player.VoiceFlags = VoiceFlags.Normal;
+					}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 				}
-			}
-			else
-			{
-				player!.PrintToCenter(_localizer!["sa_player_mute_message_time", reason, time, caller == null ? "Console" : caller.PlayerName]);
 
-				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				if (time == 0)
 				{
-					StringBuilder sb = new(_localizer!["sa_prefix"]);
-					sb.Append(_localizer["sa_admin_mute_message_time", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason, time]);
-					Server.PrintToChatAll(sb.ToString());
+					player!.PrintToCenter(_localizer!["sa_player_mute_message_perm", reason, caller == null ? "Console" : caller.PlayerName]);
+
+					if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+					{
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_mute_message_perm", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
+						Server.PrintToChatAll(sb.ToString());
+					}
+				}
+				else
+				{
+					player!.PrintToCenter(_localizer!["sa_player_mute_message_time", reason, time, caller == null ? "Console" : caller.PlayerName]);
+
+					if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+					{
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_mute_message_time", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason, time]);
+						Server.PrintToChatAll(sb.ToString());
+					}
 				}
 			}
 		});
@@ -1079,7 +1094,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 			return;
 		}
 
-		BanManager _banManager = new(dbConnectionString);
+		BanManager _banManager = new(dbConnectionString, Config);
 
 		int.TryParse(command.GetArg(2), out time);
 
@@ -1088,49 +1103,56 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			player.Pawn.Value!.Freeze();
-
-			PlayerInfo playerInfo = new PlayerInfo
+			if (caller!.CanTarget(player))
 			{
-				SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
-				Name = player?.PlayerName,
-				IpAddress = player?.IpAddress?.Split(":")[0]
-			};
-
-			PlayerInfo adminInfo = new PlayerInfo
-			{
-				SteamId = caller?.AuthorizedSteamID?.SteamId64.ToString(),
-				Name = caller?.PlayerName,
-				IpAddress = caller?.IpAddress?.Split(":")[0]
-			};
-
-			Task.Run(async () =>
-			{
-				await _banManager.BanPlayer(playerInfo, adminInfo, reason, time);
-			});
-
-			AddTimer(Config.KickTime, () => Helper.KickPlayer((ushort)player!.UserId!));
-
-			if (time == 0)
-			{
-				player!.PrintToCenter(_localizer!["sa_player_ban_message_perm", reason, caller == null ? "Console" : caller.PlayerName]);
-
-				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				if (player.PawnIsAlive)
 				{
-					StringBuilder sb = new(_localizer!["sa_prefix"]);
-					sb.Append(_localizer["sa_admin_ban_message_perm", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
-					Server.PrintToChatAll(sb.ToString());
+					player.Pawn.Value!.Freeze();
+					player.CommitSuicide(true, true);
 				}
-			}
-			else
-			{
-				player!.PrintToCenter(_localizer!["sa_player_ban_message_time", reason, time, caller == null ? "Console" : caller.PlayerName]);
 
-				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				PlayerInfo playerInfo = new PlayerInfo
 				{
-					StringBuilder sb = new(_localizer!["sa_prefix"]);
-					sb.Append(_localizer["sa_admin_ban_message_time", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason, time]);
-					Server.PrintToChatAll(sb.ToString());
+					SteamId = player?.AuthorizedSteamID?.SteamId64.ToString(),
+					Name = player?.PlayerName,
+					IpAddress = player?.IpAddress?.Split(":")[0]
+				};
+
+				PlayerInfo adminInfo = new PlayerInfo
+				{
+					SteamId = caller?.AuthorizedSteamID?.SteamId64.ToString(),
+					Name = caller?.PlayerName,
+					IpAddress = caller?.IpAddress?.Split(":")[0]
+				};
+
+				Task.Run(async () =>
+				{
+					await _banManager.BanPlayer(playerInfo, adminInfo, reason, time);
+				});
+
+				AddTimer(Config.KickTime, () => Helper.KickPlayer((ushort)player!.UserId!));
+
+				if (time == 0)
+				{
+					player!.PrintToCenter(_localizer!["sa_player_ban_message_perm", reason, caller == null ? "Console" : caller.PlayerName]);
+
+					if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+					{
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_ban_message_perm", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason]);
+						Server.PrintToChatAll(sb.ToString());
+					}
+				}
+				else
+				{
+					player!.PrintToCenter(_localizer!["sa_player_ban_message_time", reason, time, caller == null ? "Console" : caller.PlayerName]);
+
+					if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+					{
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_ban_message_time", caller == null ? "Console" : caller.PlayerName, player.PlayerName, reason, time]);
+						Server.PrintToChatAll(sb.ToString());
+					}
 				}
 			}
 		});
@@ -1156,7 +1178,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 		int time = 0;
 		string reason = "Unknown";
 
-		BanManager _banManager = new(dbConnectionString);
+		BanManager _banManager = new(dbConnectionString, Config);
 
 		int.TryParse(command.GetArg(2), out time);
 
@@ -1212,7 +1234,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		Task.Run(async () =>
 		{
-			BanManager _banManager = new(dbConnectionString);
+			BanManager _banManager = new(dbConnectionString, Config);
 			await _banManager.AddBanBySteamid(steamid, adminInfo, reason, time);
 		});
 
@@ -1294,7 +1316,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		Task.Run(async () =>
 		{
-			BanManager _banManager = new(dbConnectionString);
+			BanManager _banManager = new(dbConnectionString, Config);
 			await _banManager.AddBanByIp(ipAddress, adminInfo, reason, time);
 		});
 
@@ -1313,7 +1335,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 		}
 
 		string pattern = command.GetArg(1);
-		BanManager _banManager = new(dbConnectionString);
+		BanManager _banManager = new(dbConnectionString, Config);
 
 		_ = _banManager.UnbanPlayer(pattern);
 
@@ -1401,14 +1423,17 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			player.RemoveWeapons();
-
-			StringBuilder sb = new(_localizer!["sa_prefix"]);
-
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+			if (caller!.CanTarget(player))
 			{
-				sb.Append(_localizer["sa_admin_strip_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-				Server.PrintToChatAll(sb.ToString());
+				player.RemoveWeapons();
+
+				StringBuilder sb = new(_localizer!["sa_prefix"]);
+
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					sb.Append(_localizer["sa_admin_strip_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
@@ -1427,14 +1452,17 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			player.SetHp(health);
-
-			StringBuilder sb = new(_localizer!["sa_prefix"]);
-
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+			if (caller!.CanTarget(player))
 			{
-				sb.Append(_localizer["sa_admin_hp_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-				Server.PrintToChatAll(sb.ToString());
+				player.SetHp(health);
+
+				StringBuilder sb = new(_localizer!["sa_prefix"]);
+
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					sb.Append(_localizer["sa_admin_hp_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
@@ -1453,18 +1481,21 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			/*
-			player.Speed = (float)speed;
-			player.PlayerPawn.Value!.Speed = (float)speed;
-			*/
-			player.SetSpeed((float)speed);
-
-			StringBuilder sb = new(_localizer!["sa_prefix"]);
-
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+			if (caller!.CanTarget(player))
 			{
-				sb.Append(_localizer["sa_admin_speed_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-				Server.PrintToChatAll(sb.ToString());
+				/*
+				player.Speed = (float)speed;
+				player.PlayerPawn.Value!.Speed = (float)speed;
+				*/
+				player.SetSpeed((float)speed);
+
+				StringBuilder sb = new(_localizer!["sa_prefix"]);
+
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					sb.Append(_localizer["sa_admin_speed_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
@@ -1480,19 +1511,22 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			if (player != null && player.UserId != null)
+			if (caller!.CanTarget(player))
 			{
-				if (!godPlayers.Contains((ushort)player.UserId))
-					godPlayers.Add((ushort)player.UserId);
-				else
-					godPlayers.Remove((ushort)player.UserId);
-
-				StringBuilder sb = new(_localizer!["sa_prefix"]);
-
-				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller!.UserId))
+				if (player != null && player.UserId != null)
 				{
-					sb.Append(_localizer["sa_admin_god_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-					Server.PrintToChatAll(sb.ToString());
+					if (!godPlayers.Contains((ushort)player.UserId))
+						godPlayers.Add((ushort)player.UserId);
+					else
+						godPlayers.Remove((ushort)player.UserId);
+
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+
+					if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller!.UserId))
+					{
+						sb.Append(_localizer["sa_admin_god_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+						Server.PrintToChatAll(sb.ToString());
+					}
 				}
 			}
 		});
@@ -1516,13 +1550,16 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			player!.Pawn.Value!.Slap(damage);
-			StringBuilder sb = new(_localizer!["sa_prefix"]);
-
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+			if (caller!.CanTarget(player))
 			{
-				sb.Append(_localizer["sa_admin_slap_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-				Server.PrintToChatAll(sb.ToString());
+				player!.Pawn.Value!.Slap(damage);
+				StringBuilder sb = new(_localizer!["sa_prefix"]);
+
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					sb.Append(_localizer["sa_admin_slap_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
@@ -1634,7 +1671,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 		foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && !p.IsHLTV))
 		{
 			if (p == null) continue;
-			ChatMenus.OpenMenu(p, voteMenu);
+			MenuManager.OpenChatMenu(p, voteMenu);
 		}
 
 		AddTimer(40, () =>
@@ -1652,10 +1689,9 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 			voteAnswers.Clear();
 			voteInProgress = false;
 		}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
-
-		return;
 	}
 
+	[ConsoleCommand("css_changemap")]
 	[ConsoleCommand("css_map")]
 	[RequiresPermissions("@css/changemap")]
 	[CommandHelper(minArgs: 1, usage: "<mapname>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
@@ -1669,19 +1705,20 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 			return;
 		}
 
-		AddTimer(5f, () =>
-		{
-			Server.ExecuteCommand($"changelevel {map}");
-		});
-
 		if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
 		{
 			StringBuilder sb = new(_localizer!["sa_prefix"]);
 			sb.Append(_localizer["sa_admin_changemap_message", caller == null ? "Console" : caller.PlayerName, map]);
 			Server.PrintToChatAll(sb.ToString());
 		}
+
+		AddTimer(3.0f, () =>
+		{
+			Server.ExecuteCommand($"changelevel {map}");
+		}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 	}
 
+	[ConsoleCommand("css_changewsmap", "Change workshop map.")]
 	[ConsoleCommand("css_wsmap", "Change workshop map.")]
 	[ConsoleCommand("css_workshop", "Change workshop map.")]
 	[CommandHelper(1, "<name or id>")]
@@ -1691,7 +1728,7 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 		string? _command = null;
 		var map = command.GetArg(1);
 
-		_command = ulong.TryParse(map, out var mapId) ? $"host_workshop_map {mapId}" : $"ds_workshop_changelevel {map}";
+		_command = int.TryParse(map, out var mapId) ? $"host_workshop_map {mapId}" : $"ds_workshop_changelevel {map}";
 		if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
 		{
 			StringBuilder sb = new(_localizer!["sa_prefix"]);
@@ -1699,10 +1736,10 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 			Server.PrintToChatAll(sb.ToString());
 		}
 
-		AddTimer(5f, () =>
+		AddTimer(3.0f, () =>
 		{
 			Server.ExecuteCommand(_command);
-		});
+		}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 	}
 
 	[ConsoleCommand("css_asay", "Say to all admins.")]
@@ -1797,13 +1834,16 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			player!.Pawn.Value!.ToggleNoclip();
-
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+			if (caller!.CanTarget(player))
 			{
-				StringBuilder sb = new(_localizer!["sa_prefix"]);
-				sb.Append(_localizer["sa_admin_noclip_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-				Server.PrintToChatAll(sb.ToString());
+				player!.Pawn.Value!.ToggleNoclip();
+
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_noclip_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
@@ -1821,16 +1861,19 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			player!.Pawn.Value!.Freeze();
-
-			if (time > 0)
-				AddTimer(time, () => player.Pawn.Value!.Unfreeze());
-
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+			if (caller!.CanTarget(player))
 			{
-				StringBuilder sb = new(_localizer!["sa_prefix"]);
-				sb.Append(_localizer["sa_admin_freeze_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-				Server.PrintToChatAll(sb.ToString());
+				player!.Pawn.Value!.Freeze();
+
+				if (time > 0)
+					AddTimer(time, () => player.Pawn.Value!.Unfreeze());
+
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_freeze_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
@@ -1866,13 +1909,16 @@ public partial class CS2_SimpleAdmin : BasePlugin, IPluginConfig<CS2_SimpleAdmin
 
 		playersToTarget.ForEach(player =>
 		{
-			player!.Respawn();
-
-			if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+			if (caller!.CanTarget(player))
 			{
-				StringBuilder sb = new(_localizer!["sa_prefix"]);
-				sb.Append(_localizer["sa_admin_respawn_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
-				Server.PrintToChatAll(sb.ToString());
+				player!.Respawn();
+
+				if (caller == null || caller != null && caller.UserId != null && !silentPlayers.Contains((ushort)caller.UserId))
+				{
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_respawn_message", caller == null ? "Console" : caller.PlayerName, player.PlayerName]);
+					Server.PrintToChatAll(sb.ToString());
+				}
 			}
 		});
 	}
