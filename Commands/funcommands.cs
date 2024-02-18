@@ -57,7 +57,7 @@ namespace CS2_SimpleAdmin
 
 		[ConsoleCommand("css_freeze", "Freeze a player.")]
 		[CommandHelper(1, "<#userid or name> [duration]")]
-		[RequiresPermissions("@css/slay")]
+		[RequiresPermissions("@css/root")]
 		public void OnFreezeCommand(CCSPlayerController? caller, CommandInfo command)
 		{
 			string callerName = caller == null ? "Console" : caller.PlayerName;
@@ -109,7 +109,7 @@ namespace CS2_SimpleAdmin
 
 		[ConsoleCommand("css_unfreeze", "Unfreeze a player.")]
 		[CommandHelper(1, "<#userid or name>")]
-		[RequiresPermissions("@css/slay")]
+		[RequiresPermissions("@css/root")]
 		public void OnUnfreezeCommand(CCSPlayerController? caller, CommandInfo command)
 		{
 			string callerName = caller == null ? "Console" : caller.PlayerName;

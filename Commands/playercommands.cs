@@ -143,7 +143,7 @@ namespace CS2_SimpleAdmin
 		}
 
 		[ConsoleCommand("css_strip")]
-		[RequiresPermissions("@css/slay")]
+		[RequiresPermissions("@css/cheats")]
 		[CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnStripCommand(CCSPlayerController? caller, CommandInfo command)
 		{
@@ -192,7 +192,7 @@ namespace CS2_SimpleAdmin
 		}
 
 		[ConsoleCommand("css_hp")]
-		[RequiresPermissions("@css/slay")]
+		[RequiresPermissions("@css/cheats")]
 		[CommandHelper(minArgs: 1, usage: "<#userid or name> <health>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnHpCommand(CCSPlayerController? caller, CommandInfo command)
 		{
@@ -244,7 +244,7 @@ namespace CS2_SimpleAdmin
 		}
 
 		[ConsoleCommand("css_speed")]
-		[RequiresPermissions("@css/slay")]
+		[RequiresPermissions("@css/cheats")]
 		[CommandHelper(minArgs: 1, usage: "<#userid or name> <speed>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnSpeedCommand(CCSPlayerController? caller, CommandInfo command)
 		{
@@ -609,7 +609,7 @@ namespace CS2_SimpleAdmin
 		[ConsoleCommand("css_tpto", "Teleport to a player.")]
 		[ConsoleCommand("css_goto", "Teleport to a player.")]
 		[CommandHelper(1, "<#userid or name>")]
-		[RequiresPermissions("@css/kick")]
+		[RequiresPermissions("@css/cheats")]
 		public void OnGotoCommand(CCSPlayerController? caller, CommandInfo command)
 		{
 			if (caller == null || !caller.PawnIsAlive) return;
@@ -663,7 +663,7 @@ namespace CS2_SimpleAdmin
 		[ConsoleCommand("css_bring", "Teleport a player to you.")]
 		[ConsoleCommand("css_tphere", "Teleport a player to you.")]
 		[CommandHelper(1, "<#userid or name>")]
-		[RequiresPermissions("@css/kick")]
+		[RequiresPermissions("@css/cheats")]
 		public void OnBringCommand(CCSPlayerController? caller, CommandInfo command)
 		{
 			if (caller == null || !caller.PawnIsAlive) return;
