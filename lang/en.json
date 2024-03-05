@@ -1,5 +1,5 @@
 {
-	"sa_prefix": "{lightred}[SA] {default}",
+	"sa_prefix": "{lightred}[Admin] {default}",
 	"sa_player_ban_message_time": "You have been banned for {lightred}{0}{default} for {lightred}{1}{default} minutes by {lightred}{2}{default}!",
 	"sa_player_ban_message_perm": "You have been banned permanently for {lightred}{0}{default} by {lightred}{1}{default}!",
 	"sa_player_kick_message": "You have been kicked for {lightred}{0}{default} by {lightred}{1}{default}!",
