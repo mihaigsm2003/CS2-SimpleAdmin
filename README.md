@@ -57,6 +57,7 @@ Manage your Counter-Strike 2 server by simple commands :)
 - css_cvar <cvar> <value> - Change cvar value // @css/cvar
 - css_rcon <command> - Run command as server // @css/rcon
 - css_give <#userid or name> <WeaponName> - Gives a weapon to a Player // @css/give
+- css_tp <#userid or name> - teleport plyer //@css/slay
 
 - team_chat @Message - Say message to all admins // @css/chat
 ```
