@@ -7,15 +7,13 @@ using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Entities;
 using Dapper;
 using Microsoft.Extensions.Logging;
-using System.Data;
 using System.Text;
-using static Dapper.SqlMapper;
 
 namespace CS2_SimpleAdmin;
 
 public partial class CS2_SimpleAdmin
 {
-	public static HashSet<int> loadedPlayers = new HashSet<int>();
+	private static readonly HashSet<int> LoadedPlayers = [];
 
 	private void RegisterEvents()
 	{
@@ -40,7 +38,7 @@ public partial class CS2_SimpleAdmin
 			return HookResult.Continue;
 		}
 
-		if (!loadedPlayers.Contains(player.Slot))
+		if (!LoadedPlayers.Contains(player.Slot))
 		{
 			return HookResult.Continue;
 		}
@@ -50,7 +48,6 @@ public partial class CS2_SimpleAdmin
 #endif
 		try
 		{
-			PlayerPenaltyManager playerPenaltyManager = new PlayerPenaltyManager();
 			PlayerPenaltyManager.RemoveAllPenalties(player.Slot);
 
 			if (TagsDetected)
@@ -68,15 +65,15 @@ public partial class CS2_SimpleAdmin
 				RemoveFromConcurrentBag(godPlayers, player.Slot);
 			}
 
-			SteamID? authorizedSteamID = player.AuthorizedSteamID;
-			if (authorizedSteamID != null && AdminSQLManager._adminCache.TryGetValue(authorizedSteamID, out DateTime? expirationTime)
+			SteamID? authorizedSteamId = player.AuthorizedSteamID;
+			if (authorizedSteamId != null && AdminSQLManager.AdminCache.TryGetValue(authorizedSteamId, out var expirationTime)
 				&& expirationTime <= DateTime.Now)
 			{
-				AdminManager.ClearPlayerPermissions(authorizedSteamID);
-				AdminManager.RemovePlayerAdminData(authorizedSteamID);
+				AdminManager.ClearPlayerPermissions(authorizedSteamId);
+				AdminManager.RemovePlayerAdminData(authorizedSteamId);
 			}
 
-			loadedPlayers.Remove(player.Slot);
+			LoadedPlayers.Remove(player.Slot);
 
 			return HookResult.Continue;
 		}
@@ -96,7 +93,7 @@ public partial class CS2_SimpleAdmin
 			|| player.IsBot || player.IsHLTV || !player.UserId.HasValue)
 			return HookResult.Continue;
 
-		string ipAddress = player.IpAddress.Split(":")[0];
+		var ipAddress = player.IpAddress.Split(":")[0];
 
 		// Check if the player's IP or SteamID is in the bannedPlayers list
 		if (bannedPlayers.Contains(ipAddress) || bannedPlayers.Contains(player.SteamID.ToString()))
@@ -110,10 +107,9 @@ public partial class CS2_SimpleAdmin
 
 		if (_database == null) return HookResult.Continue;
 
-		PlayerInfo playerInfo = new PlayerInfo
+		var playerInfo = new PlayerInfo
 		{
 			UserId = player.UserId.Value,
-			Index = (ushort)player.Index,
 			Slot = player.Slot,
 			SteamId = player.SteamID.ToString(),
 			Name = player.PlayerName,
@@ -124,14 +120,13 @@ public partial class CS2_SimpleAdmin
 		Task.Run(async () =>
 		{
 			// Initialize managers
-			BanManager _banManager = new(_database, Config);
-			MuteManager _muteManager = new(_database);
-			PlayerPenaltyManager playerPenaltyManager = new PlayerPenaltyManager();
+			BanManager banManager = new(_database, Config);
+			MuteManager muteManager = new(_database);
 
 			try
 			{
 				// Check if the player is banned
-				bool isBanned = await _banManager.IsPlayerBanned(playerInfo);
+				bool isBanned = await banManager.IsPlayerBanned(playerInfo);
 				if (isBanned)
 				{
 					// Add player's IP and SteamID to bannedPlayers list if not already present
@@ -142,10 +137,10 @@ public partial class CS2_SimpleAdmin
 						bannedPlayers.Add(playerInfo.SteamId);
 
 					// Kick the player if banned
-					Server.NextFrame(() =>
+					await Server.NextFrameAsync(() =>
 					{
 						var victim = Utilities.GetPlayerFromUserid(playerInfo.UserId);
-						if (victim != null && victim.UserId.HasValue)
+						if (victim.UserId.HasValue)
 						{
 							Helper.KickPlayer(victim.UserId.Value, "Banned");
 						}
@@ -155,46 +150,46 @@ public partial class CS2_SimpleAdmin
 				}
 
 				// Check if the player is muted
-				List<dynamic> activeMutes = await _muteManager.IsPlayerMuted(playerInfo.SteamId);
+				var activeMutes = await muteManager.IsPlayerMuted(playerInfo.SteamId);
 				if (activeMutes.Count > 0)
 				{
-					foreach (dynamic mute in activeMutes)
+					foreach (var mute in activeMutes)
 					{
 						string muteType = mute.type;
 						DateTime ends = mute.ends;
 						int duration = mute.duration;
 
-						// Apply mute penalty based on mute type
-						if (muteType == "GAG")
+						switch (muteType)
 						{
-							PlayerPenaltyManager.AddPenalty(playerInfo.Slot, PenaltyType.Gag, ends, duration);
-							Server.NextFrame(() =>
-							{
-								if (TagsDetected)
+							// Apply mute penalty based on mute type
+							case "GAG":
+								PlayerPenaltyManager.AddPenalty(playerInfo.Slot, PenaltyType.Gag, ends, duration);
+								await Server.NextFrameAsync(() =>
 								{
-									Server.ExecuteCommand($"css_tag_mute {playerInfo.SteamId}");
-								}
-							});
-						}
-						else if (muteType == "MUTE")
-						{
-							PlayerPenaltyManager.AddPenalty(playerInfo.Slot, PenaltyType.Mute, ends, duration);
-							Server.NextFrame(() =>
-							{
-								player.VoiceFlags = VoiceFlags.Muted;
-							});
-						}
-						else
-						{
-							PlayerPenaltyManager.AddPenalty(playerInfo.Slot, PenaltyType.Silence, ends, duration);
-							Server.NextFrame(() =>
-							{
-								player.VoiceFlags = VoiceFlags.Muted;
-								if (TagsDetected)
+									if (TagsDetected)
+									{
+										Server.ExecuteCommand($"css_tag_mute {playerInfo.SteamId}");
+									}
+								});
+								break;
+							case "MUTE":
+								PlayerPenaltyManager.AddPenalty(playerInfo.Slot, PenaltyType.Mute, ends, duration);
+								await Server.NextFrameAsync(() =>
 								{
-									Server.ExecuteCommand($"css_tag_mute {playerInfo.SteamId}");
-								}
-							});
+									player.VoiceFlags = VoiceFlags.Muted;
+								});
+								break;
+							default:
+								PlayerPenaltyManager.AddPenalty(playerInfo.Slot, PenaltyType.Silence, ends, duration);
+								await Server.NextFrameAsync(() =>
+								{
+									player.VoiceFlags = VoiceFlags.Muted;
+									if (TagsDetected)
+									{
+										Server.ExecuteCommand($"css_tag_mute {playerInfo.SteamId}");
+									}
+								});
+								break;
 						}
 					}
 				}
@@ -206,8 +201,7 @@ public partial class CS2_SimpleAdmin
 		});
 
 		// Add player to loadedPlayers
-		if (!loadedPlayers.Contains(player.Slot))
-			loadedPlayers.Add(player.Slot);
+		LoadedPlayers.Add(player.Slot);
 
 		return HookResult.Continue;
 	}
@@ -225,14 +219,12 @@ public partial class CS2_SimpleAdmin
 
 	public HookResult OnCommandSay(CCSPlayerController? player, CommandInfo info)
 	{
-		if (player is null || !player.IsValid || player.IsBot || player.IsHLTV || info.GetArg(1).StartsWith("/")
-			 || info.GetArg(1).StartsWith("!") && info.GetArg(1).Length >= 12)
+		if (player is null || !player.IsValid || player.IsBot || player.IsHLTV || info.GetArg(1).StartsWith($"/")
+			 || info.GetArg(1).StartsWith($"!") && info.GetArg(1).Length >= 12)
 			return HookResult.Continue;
 
 		if (info.GetArg(1).Length == 0)
 			return HookResult.Handled;
-
-		PlayerPenaltyManager playerPenaltyManager = new PlayerPenaltyManager();
 
 		if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag) || PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
 			return HookResult.Handled;
@@ -242,49 +234,45 @@ public partial class CS2_SimpleAdmin
 
 	public HookResult OnCommandTeamSay(CCSPlayerController? player, CommandInfo info)
 	{
-		if (player is null || !player.IsValid || player.IsBot || player.IsHLTV || info.GetArg(1).StartsWith("/")
-			 || info.GetArg(1).StartsWith("!") && info.GetArg(1).Length >= 12)
+		if (player is null || !player.IsValid || player.IsBot || player.IsHLTV || info.GetArg(1).StartsWith($"/")
+			 || info.GetArg(1).StartsWith($"!") && info.GetArg(1).Length >= 12)
 			return HookResult.Continue;
 
 		if (info.GetArg(1).Length == 0)
 			return HookResult.Handled;
 
-		PlayerPenaltyManager playerPenaltyManager = new PlayerPenaltyManager();
-
 		if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag) || PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
 			return HookResult.Handled;
 
-		if (info.GetArg(1).StartsWith("@"))
+		if (!info.GetArg(1).StartsWith($"@")) return HookResult.Continue;
+		
+		StringBuilder sb = new();
+
+		if (AdminManager.PlayerHasPermissions(player, "@css/chat"))
 		{
-			StringBuilder sb = new();
-
-			if (AdminManager.PlayerHasPermissions(player, "@css/chat"))
+			sb.Append(_localizer!["sa_adminchat_template_admin", player!.PlayerName, info.GetArg(1).Remove(0, 1)]);
+			foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && p is { IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(p, "@css/chat")))
 			{
-				sb.Append(_localizer!["sa_adminchat_template_admin", player!.PlayerName, info.GetArg(1).Remove(0, 1)]);
-				foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && !p.IsHLTV && AdminManager.PlayerHasPermissions(p, "@css/chat")))
-				{
-					p.PrintToChat(sb.ToString());
-				}
+				p.PrintToChat(sb.ToString());
 			}
-			else
+		}
+		else
+		{
+			sb.Append(_localizer!["sa_adminchat_template_player", player!.PlayerName, info.GetArg(1).Remove(0, 1)]);
+			player.PrintToChat(sb.ToString());
+			foreach (var p in Utilities.GetPlayers().Where(p => p is { IsValid: true, IsBot: false, IsHLTV: false } && AdminManager.PlayerHasPermissions(p, "@css/chat")))
 			{
-				sb.Append(_localizer!["sa_adminchat_template_player", player!.PlayerName, info.GetArg(1).Remove(0, 1)]);
-				player.PrintToChat(sb.ToString());
-				foreach (var p in Utilities.GetPlayers().Where(p => p.IsValid && !p.IsBot && !p.IsHLTV && AdminManager.PlayerHasPermissions(p, "@css/chat")))
-				{
-					p.PrintToChat(sb.ToString());
-				}
+				p.PrintToChat(sb.ToString());
 			}
-
-			return HookResult.Handled;
 		}
 
-		return HookResult.Continue;
+		return HookResult.Handled;
+
 	}
 
 	private void OnMapStart(string mapName)
 	{
-		string? path = Path.GetDirectoryName(ModuleDirectory);
+		var path = Path.GetDirectoryName(ModuleDirectory);
 		if (Directory.Exists(path + "/CS2-Tags"))
 		{
 			TagsDetected = true;
@@ -293,12 +281,9 @@ public partial class CS2_SimpleAdmin
 		godPlayers.Clear();
 		silentPlayers.Clear();
 
-		PlayerPenaltyManager playerPenaltyManager = new PlayerPenaltyManager();
 		PlayerPenaltyManager.RemoveAllPenalties();
 
-		_database = new(dbConnectionString);
-
-		if (_database == null) return;
+		_database = new Database(dbConnectionString);
 
 		AddTimer(61.0f, () =>
 		{
@@ -306,80 +291,73 @@ public partial class CS2_SimpleAdmin
 			Logger.LogCritical("[OnMapStart] Expired check");
 #endif
 
-			List<CCSPlayerController> players = Helper.GetValidPlayers();
-			List<(string? IpAddress, ulong SteamID, int? UserId)> onlinePlayers = players
+			var players = Helper.GetValidPlayers();
+			var onlinePlayers = players
 				.Where(player => player.IpAddress != null && player.SteamID.ToString().Length == 17)
 				.Select(player => (player.IpAddress, player.SteamID, player.UserId))
 				.ToList();
 
 			Task.Run(async () =>
 			{
-				AdminSQLManager _adminManager = new(_database);
-				BanManager _banManager = new(_database, Config);
-				MuteManager _muteManager = new(_database);
+				AdminSQLManager adminManager = new(_database);
+				BanManager banManager = new(_database, Config);
+				MuteManager muteManager = new(_database);
 
-				await _banManager.ExpireOldBans();
-				await _muteManager.ExpireOldMutes();
-				await _adminManager.DeleteOldAdmins();
+				await banManager.ExpireOldBans();
+				await muteManager.ExpireOldMutes();
+				await adminManager.DeleteOldAdmins();
 
 				try
 				{
-					await _banManager.CheckOnlinePlayers(onlinePlayers);
+					await banManager.CheckOnlinePlayers(onlinePlayers);
 				}
 				catch { }
 
 				bannedPlayers.Clear();
 
-				Server.NextFrame(() =>
+				await Server.NextFrameAsync(() =>
 				{
 					try
 					{
-						foreach (CCSPlayerController player in players)
+						foreach (var player in players.Where(player => PlayerPenaltyManager.IsSlotInPenalties(player.Slot)))
 						{
-							if (PlayerPenaltyManager.IsSlotInPenalties(player.Slot))
+							if (!PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Mute) && !PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
+								player.VoiceFlags = VoiceFlags.Normal;
+
+							if (!PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag) && !PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
 							{
-								if (!PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Mute) && !PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
-									player.VoiceFlags = VoiceFlags.Normal;
-
-								if (!PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag) && !PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence))
-								{
-									if (TagsDetected)
-										Server.ExecuteCommand($"css_tag_unmute {player!.SteamID}");
-								}
-
-								if (
-									!PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence) &&
-									!PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Mute) &&
-									!PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag)
-								)
-								{
-									player.VoiceFlags = VoiceFlags.Normal;
-
-									if (TagsDetected)
-										Server.ExecuteCommand($"css_tag_unmute {player!.SteamID}");
-								}
+								if (TagsDetected)
+									Server.ExecuteCommand($"css_tag_unmute {player.SteamID}");
 							}
+
+							if (PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Silence) ||
+							    PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Mute) ||
+							    PlayerPenaltyManager.IsPenalized(player.Slot, PenaltyType.Gag)) continue;
+							player.VoiceFlags = VoiceFlags.Normal;
+
+							if (TagsDetected)
+								Server.ExecuteCommand($"css_tag_unmute {player.SteamID}");
 						}
 
 						PlayerPenaltyManager.RemoveExpiredPenalties();
 					}
-					catch (Exception) { }
+					catch { }
 				});
 			});
 		}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.REPEAT | CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 
 		AddTimer(2.0f, () =>
 		{
-			string? address = $"{ConVar.Find("ip")!.StringValue}:{ConVar.Find("hostport")!.GetPrimitiveValue<int>()}";
-			string? hostname = ConVar.Find("hostname")!.StringValue;
+			var address = $"{ConVar.Find("ip")!.StringValue}:{ConVar.Find("hostport")!.GetPrimitiveValue<int>()}";
+			var hostname = ConVar.Find("hostname")!.StringValue;
 
 			Task.Run(async () =>
 			{
-				AdminSQLManager _adminManager = new(_database);
+				AdminSQLManager adminManager = new(_database);
 				try
 				{
 					await using var connection = await _database.GetConnectionAsync();
-					bool addressExists = await connection.ExecuteScalarAsync<bool>(
+					var addressExists = await connection.ExecuteScalarAsync<bool>(
 						"SELECT COUNT(*) FROM sa_servers WHERE address = @address",
 						new { address });
 
@@ -409,12 +387,12 @@ public partial class CS2_SimpleAdmin
 
 				if (Config.EnableMetrics)
 				{
-					string queryString = $"?address={address}&hostname={hostname}";
+					var queryString = $"?address={address}&hostname={hostname}";
 					using HttpClient client = new();
 
 					try
 					{
-						HttpResponseMessage response = await client.GetAsync($"https://api.daffyy.love/index.php{queryString}");
+						var response = await client.GetAsync($"https://api.daffyy.love/index.php{queryString}");
 					}
 					catch (HttpRequestException ex)
 					{
@@ -425,8 +403,8 @@ public partial class CS2_SimpleAdmin
 				//await _adminManager.GiveAllGroupsFlags();
 				//await _adminManager.GiveAllFlags();
 
-				await _adminManager.CrateGroupsJsonFile();
-				await _adminManager.CreateAdminsJsonFile();
+				await adminManager.CrateGroupsJsonFile();
+				await adminManager.CreateAdminsJsonFile();
 
 				AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
 				AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json");
@@ -442,11 +420,10 @@ public partial class CS2_SimpleAdmin
 		if (player is null || @event.Attacker is null || !player.PawnIsAlive || player.PlayerPawn.Value == null)
 			return HookResult.Continue;
 
-		if (godPlayers.Contains(player.Slot))
-		{
-			player.PlayerPawn.Value.Health = player.PlayerPawn.Value.MaxHealth;
-			player.PlayerPawn.Value.ArmorValue = 100;
-		}
+		if (!godPlayers.Contains(player.Slot)) return HookResult.Continue;
+		
+		player.PlayerPawn.Value.Health = player.PlayerPawn.Value.MaxHealth;
+		player.PlayerPawn.Value.ArmorValue = 100;
 
 		return HookResult.Continue;
 	}

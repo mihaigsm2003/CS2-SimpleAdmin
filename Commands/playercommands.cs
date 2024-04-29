@@ -3,7 +3,6 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Commands.Targeting;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -18,11 +17,11 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnSlayCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			TargetResult? targets = GetTarget(command);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
@@ -30,14 +29,14 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void Slay(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
+		public void Slay(CCSPlayerController? caller, CCSPlayerController? player, string? callerName = null, CommandInfo? command = null)
 		{
-			if (!player.IsBot && player.SteamID.ToString().Length != 17)
+			if (player != null && !player.IsBot && player.SteamID.ToString().Length != 17)
 				return;
 
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
-			player.CommitSuicide(false, true);
+			player?.CommitSuicide(false, true);
 
 			if (command != null)
 			{
@@ -45,16 +44,14 @@ namespace CS2_SimpleAdmin
 				Helper.LogCommand(caller, command);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_slay_message", callerName, player.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_slay_message", callerName, player?.PlayerName ?? string.Empty]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -64,15 +61,15 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 2, usage: "<#userid or name> <weapon>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnGiveCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			TargetResult? targets = GetTarget(command);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
-			string weaponName = command.GetArg(2);
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
+			var weaponName = command.GetArg(2);
 
 			// check if item is typed
-			if (weaponName == null || weaponName.Length < 5)
+			if (weaponName.Length < 5)
 			{
 				command.ReplyToCommand($"No weapon typed.");
 				return;
@@ -106,13 +103,13 @@ namespace CS2_SimpleAdmin
 
 		public void GiveWeapon(CCSPlayerController? caller, CCSPlayerController player, CsItem weapon, string? callerName = null)
 		{
-			Helper.LogCommand(caller, $"css_give {player?.PlayerName} {weapon.ToString()}");
+			Helper.LogCommand(caller, $"css_give {player.PlayerName} {weapon.ToString()}");
 
-			player?.GiveNamedItem(weapon);
-			SubGiveWeapon(caller, player!, weapon.ToString(), callerName);
+			player.GiveNamedItem(weapon);
+			SubGiveWeapon(caller, player, weapon.ToString(), callerName);
 		}
 
-		public void GiveWeapon(CCSPlayerController? caller, CCSPlayerController player, string weaponName, string? callerName = null, CommandInfo? command = null)
+		private void GiveWeapon(CCSPlayerController? caller, CCSPlayerController player, string weaponName, string? callerName = null, CommandInfo? command = null)
 		{
 			if (command != null)
 			{
@@ -120,24 +117,22 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			player?.GiveNamedItem(weaponName);
-			SubGiveWeapon(caller, player!, weaponName, callerName);
+			player.GiveNamedItem(weaponName);
+			SubGiveWeapon(caller, player, weaponName, callerName);
 		}
 
-		public void SubGiveWeapon(CCSPlayerController? caller, CCSPlayerController player, string weaponName, string? callerName = null)
+		private void SubGiveWeapon(CCSPlayerController? caller, CCSPlayerController player, string weaponName, string? callerName = null)
 		{
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && (silentPlayers.Contains(caller.Slot))) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_give_message", callerName, player.PlayerName, weaponName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_give_message", callerName, player.PlayerName, weaponName]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -147,11 +142,11 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnStripCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			TargetResult? targets = GetTarget(command);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
@@ -162,14 +157,14 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void StripWeapons(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
+		public void StripWeapons(CCSPlayerController? caller, CCSPlayerController? player, string? callerName = null, CommandInfo? command = null)
 		{
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
-			if (!player.IsBot && player.SteamID.ToString().Length != 17)
+			if (player != null && !player.IsBot && player.SteamID.ToString().Length != 17)
 				return;
 
-			player.RemoveWeapons();
+			player?.RemoveWeapons();
 
 			if (command != null)
 			{
@@ -177,16 +172,14 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_strip_message", callerName, player.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_strip_message", callerName, player?.PlayerName ?? string.Empty]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -196,30 +189,28 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name> <health>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnHpCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			int health = 100;
-			int.TryParse(command.GetArg(2), out health);
+			int.TryParse(command.GetArg(2), out var health);
 
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
 				if (caller!.CanTarget(player))
 				{
-					SetHp(caller, player, health, callerName, command);
+					SetHp(caller, player, health, command);
 				}
 			});
 		}
 
-		public void SetHp(CCSPlayerController? caller, CCSPlayerController player, int health, string? callerName = null, CommandInfo? command = null)
+		public void SetHp(CCSPlayerController? caller, CCSPlayerController? player, int health, CommandInfo? command = null)
 		{
-			if (!player.IsBot && player.SteamID.ToString().Length != 17)
+			if (player != null && !player.IsBot && player.SteamID.ToString().Length != 17)
 				return;
 
-			callerName = caller == null ? "Console" : caller.PlayerName;
+			var callerName = caller == null ? "Console" : caller.PlayerName;
 
 			player.SetHp(health);
 
@@ -229,16 +220,14 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_hp_message", callerName, player.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_hp_message", callerName, player?.PlayerName ?? string.Empty]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -248,14 +237,13 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name> <speed>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnSpeedCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			double speed = 1.0;
-			double.TryParse(command.GetArg(2), out speed);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			double.TryParse(command.GetArg(2), out var speed);
 
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
@@ -269,7 +257,7 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void SetSpeed(CCSPlayerController? caller, CCSPlayerController player, double speed, string? callerName = null, CommandInfo? command = null)
+		public void SetSpeed(CCSPlayerController? caller, CCSPlayerController? player, double speed, string? callerName = null, CommandInfo? command = null)
 		{
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
@@ -281,16 +269,14 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_speed_message", callerName, player!.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_speed_message", callerName, player!.PlayerName]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -300,16 +286,15 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name> <gravity>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnGravityCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			double gravity = 1.0;
-			double.TryParse(command.GetArg(2), out gravity);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			double.TryParse(command.GetArg(2), out var gravity);
 
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
 			Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
@@ -323,7 +308,7 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void SetGravity(CCSPlayerController? caller, CCSPlayerController player, double gravity, string? callerName = null, CommandInfo? command = null)
+		public void SetGravity(CCSPlayerController? caller, CCSPlayerController? player, double gravity, string? callerName = null, CommandInfo? command = null)
 		{
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
@@ -335,16 +320,14 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_gravity_message", callerName, player!.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_gravity_message", callerName, player!.PlayerName]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -354,14 +337,13 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name> <money>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnMoneyCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			int money = 0;
-			int.TryParse(command.GetArg(2), out money);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			int.TryParse(command.GetArg(2), out var money);
 
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
@@ -375,7 +357,7 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void SetMoney(CCSPlayerController? caller, CCSPlayerController player, int money, string? callerName = null, CommandInfo? command = null)
+		public void SetMoney(CCSPlayerController? caller, CCSPlayerController? player, int money, string? callerName = null, CommandInfo? command = null)
 		{
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
@@ -387,16 +369,14 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_money_message", callerName, player!.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_money_message", callerName, player!.PlayerName]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -406,11 +386,11 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnGodCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			TargetResult? targets = GetTarget(command);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
@@ -424,38 +404,34 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void God(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
+		public void God(CCSPlayerController? caller, CCSPlayerController? player, string? callerName = null, CommandInfo? command = null)
 		{
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
-			if (player != null)
+			if (player == null) return;
+			if (command != null)
 			{
-				if (command != null)
-				{
-					Helper.LogCommand(caller, command);
-					Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
-				}
+				Helper.LogCommand(caller, command);
+				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
+			}
 
-				if (!godPlayers.Contains(player.Slot))
-				{
-					godPlayers.Add(player.Slot);
-				}
-				else
-				{
-					RemoveFromConcurrentBag(godPlayers, player.Slot);
-				}
+			if (!godPlayers.Contains(player.Slot))
+			{
+				godPlayers.Add(player.Slot);
+			}
+			else
+			{
+				RemoveFromConcurrentBag(godPlayers, player.Slot);
+			}
 
-				if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
+			{
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					foreach (CCSPlayerController _player in Helper.GetValidPlayers())
-					{
-						using (new WithTemporaryCulture(_player.GetLanguage()))
-						{
-							StringBuilder sb = new(_localizer!["sa_prefix"]);
-							sb.Append(_localizer["sa_admin_god_message", callerName, player.PlayerName]);
-							_player.PrintToChat(sb.ToString());
-						}
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_god_message", callerName, player.PlayerName]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -465,13 +441,12 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 1, usage: "<#userid or name> [damage]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnSlapCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			int damage = 0;
+			var damage = 0;
 
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && player.PawnIsAlive && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player.IsValid && player is { PawnIsAlive: true, IsHLTV: false }).ToList();
 
 			if (command.ArgCount >= 2)
 			{
@@ -490,9 +465,9 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void Slap(CCSPlayerController? caller, CCSPlayerController player, int damage, CommandInfo? command = null)
+		public void Slap(CCSPlayerController? caller, CCSPlayerController? player, int damage, CommandInfo? command = null)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
+			var callerName = caller == null ? "Console" : caller.PlayerName;
 			player!.Pawn.Value!.Slap(damage);
 
 			if (command != null)
@@ -501,16 +476,14 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_slap_message", callerName, player.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_slap_message", callerName, player.PlayerName]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -520,15 +493,15 @@ namespace CS2_SimpleAdmin
 		[CommandHelper(minArgs: 2, usage: "<#userid or name> [<ct/tt/spec>] [-k]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnTeamCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			string teamName = command.GetArg(2).ToLower();
-			string _teamName = "SPEC";
-			CsTeam teamNum = CsTeam.Spectator;
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			var teamName = command.GetArg(2).ToLower();
+			var _teamName = "SPEC";
+			var teamNum = CsTeam.Spectator;
 
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 			if (targets == null) return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
 			switch (teamName)
 			{
@@ -555,7 +528,7 @@ namespace CS2_SimpleAdmin
 					break;
 			}
 
-			bool kill = command.GetArg(3).ToLower().Equals("-k");
+			var kill = command.GetArg(3).ToLower().Equals("-k");
 
 			playersToTarget.ForEach(player =>
 			{
@@ -563,25 +536,25 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void ChangeTeam(CCSPlayerController? caller, CCSPlayerController player, string teamName, CsTeam teamNum, bool kill, string? callerName = null, CommandInfo? command = null)
+		public void ChangeTeam(CCSPlayerController? caller, CCSPlayerController? player, string teamName, CsTeam teamNum, bool kill, string? callerName = null, CommandInfo? command = null)
 		{
-			if (!player.IsBot && player.SteamID.ToString().Length != 17)
+			if (player != null && !player.IsBot && player.SteamID.ToString().Length != 17)
 				return;
 
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			if (!teamName.Equals("swap"))
 			{
-				if (player.PawnIsAlive && teamNum != CsTeam.Spectator && !kill && Config.TeamSwitchType == 1)
+				if (player != null && player.PawnIsAlive && teamNum != CsTeam.Spectator && !kill && Config.TeamSwitchType == 1)
 					player.SwitchTeam(teamNum);
 				else
-					player.ChangeTeam(teamNum);
+					player?.ChangeTeam(teamNum);
 			}
 			else
 			{
-				if (player.TeamNum != (byte)CsTeam.Spectator)
+				if (player != null && player.TeamNum != (byte)CsTeam.Spectator)
 				{
-					CsTeam _teamNum = (CsTeam)player.TeamNum == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
+					var _teamNum = (CsTeam)player.TeamNum == CsTeam.Terrorist ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
 					teamName = _teamNum == CsTeam.Terrorist ? "TT" : "CT";
 					if (player.PawnIsAlive && !kill && Config.TeamSwitchType == 1)
 					{
@@ -594,24 +567,22 @@ namespace CS2_SimpleAdmin
 				}
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller == null || !silentPlayers.Contains(caller.Slot))
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				foreach (var controller in Helper.GetValidPlayers())
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
+					using (new WithTemporaryCulture(controller.GetLanguage()))
 					{
 						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_team_message", callerName, player.PlayerName, teamName]);
-						_player.PrintToChat(sb.ToString());
+						sb.Append(_localizer["sa_admin_team_message", callerName, player?.PlayerName ?? string.Empty, teamName]);
+						controller.PrintToChat(sb.ToString());
 					}
 				}
 			}
 
-			if (command != null)
-			{
-				Helper.LogCommand(caller, command);
-				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
-			}
+			if (command == null) return;
+			Helper.LogCommand(caller, command);
+			Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 		}
 
 		[ConsoleCommand("css_rename", "Rename a player.")]
@@ -619,14 +590,14 @@ namespace CS2_SimpleAdmin
 		[RequiresPermissions("@css/kick")]
 		public void OnRenameCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-			string? newName = command.GetArg(2);
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			var newName = command.GetArg(2);
 
 			if (string.IsNullOrEmpty(newName))
 				return;
 
-			TargetResult? targets = GetTarget(command);
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && !player.IsHLTV).ToList();
+			var targets = GetTarget(command);
+			var playersToTarget = targets!.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
 			Helper.LogCommand(caller, command);
 			Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
@@ -636,23 +607,21 @@ namespace CS2_SimpleAdmin
 				if (!player.IsBot && player.SteamID.ToString().Length != 17)
 					return;
 
-				if (caller!.CanTarget(player))
+				if (!caller!.CanTarget(player)) return;
+				if (caller == null || !silentPlayers.Contains(caller.Slot))
 				{
-					if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+					foreach (var controller in Helper.GetValidPlayers())
 					{
-						foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+						using (new WithTemporaryCulture(controller.GetLanguage()))
 						{
-							using (new WithTemporaryCulture(_player.GetLanguage()))
-							{
-								StringBuilder sb = new(_localizer!["sa_prefix"]);
-								sb.Append(_localizer["sa_admin_rename_message", callerName, player.PlayerName, newName]);
-								_player.PrintToChat(sb.ToString());
-							}
+							StringBuilder sb = new(_localizer!["sa_prefix"]);
+							sb.Append(_localizer["sa_admin_rename_message", callerName, player.PlayerName, newName]);
+							controller.PrintToChat(sb.ToString());
 						}
 					}
-
-					player.Rename(newName);
 				}
+
+				player.Rename(newName);
 			});
 		}
 
@@ -661,10 +630,10 @@ namespace CS2_SimpleAdmin
 		[RequiresPermissions("@css/cheats")]
 		public void OnRespawnCommand(CCSPlayerController? caller, CommandInfo command)
 		{
-			string callerName = caller == null ? "Console" : caller.PlayerName;
+			var callerName = caller == null ? "Console" : caller.PlayerName;
 
-			TargetResult? targets = GetTarget(command);
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && !player.IsHLTV).ToList();
+			var targets = GetTarget(command);
+			var playersToTarget = targets!.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
 			playersToTarget.ForEach(player =>
 			{
@@ -678,14 +647,14 @@ namespace CS2_SimpleAdmin
 			});
 		}
 
-		public void Respawn(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
+		public void Respawn(CCSPlayerController? caller, CCSPlayerController? player, string? callerName = null, CommandInfo? command = null)
 		{
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
-			if (CBasePlayerController_SetPawnFunc == null || player.PlayerPawn.Value == null || !player.PlayerPawn.IsValid) return;
+			if (CBasePlayerControllerSetPawnFunc == null || player?.PlayerPawn.Value == null || !player.PlayerPawn.IsValid) return;
 
 			var playerPawn = player.PlayerPawn.Value;
-			CBasePlayerController_SetPawnFunc.Invoke(player, playerPawn, true, false);
+			CBasePlayerControllerSetPawnFunc.Invoke(player, playerPawn, true, false);
 			VirtualFunction.CreateVoid<CCSPlayerController>(player.Handle,
 															GameData.GetOffset("CCSPlayerController_Respawn"))(player);
 
@@ -695,16 +664,14 @@ namespace CS2_SimpleAdmin
 				Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
 			}
 
-			if (caller == null || caller != null && !silentPlayers.Contains(caller.Slot))
+			if (caller != null && silentPlayers.Contains(caller.Slot)) return;
+			foreach (var controller in Helper.GetValidPlayers())
 			{
-				foreach (CCSPlayerController _player in Helper.GetValidPlayers())
+				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					using (new WithTemporaryCulture(_player.GetLanguage()))
-					{
-						StringBuilder sb = new(_localizer!["sa_prefix"]);
-						sb.Append(_localizer["sa_admin_respawn_message", callerName, player.PlayerName]);
-						_player.PrintToChat(sb.ToString());
-					}
+					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					sb.Append(_localizer["sa_admin_respawn_message", callerName, player.PlayerName]);
+					controller.PrintToChat(sb.ToString());
 				}
 			}
 		}
@@ -718,14 +685,12 @@ namespace CS2_SimpleAdmin
 		{
 			if (caller == null || !caller.PawnIsAlive) return;
 
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 
 			if (targets == null || targets.Count() > 1)
 				return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
 			Helper.LogCommand(caller, command);
 			Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
@@ -735,27 +700,23 @@ namespace CS2_SimpleAdmin
 				if (!player.IsBot && player.SteamID.ToString().Length != 17 || !player.PawnIsAlive)
 					return;
 
-				if (caller!.CanTarget(player))
+				if (!caller.CanTarget(player)) return;
+				caller.TeleportPlayer(player);
+				caller.Pawn.Value!.ToggleNoclip();
+
+				AddTimer(3, () =>
 				{
-					caller!.TeleportPlayer(player);
-					caller!.Pawn.Value!.ToggleNoclip();
+					caller.Pawn.Value!.ToggleNoclip();
+				});
 
-					AddTimer(3, () =>
+				if (silentPlayers.Contains(caller.Slot)) return;
+				foreach (var controller in Helper.GetValidPlayers())
+				{
+					using (new WithTemporaryCulture(controller.GetLanguage()))
 					{
-						caller!.Pawn.Value!.ToggleNoclip();
-					});
-
-					if (caller != null && !silentPlayers.Contains(caller.Slot))
-					{
-						foreach (CCSPlayerController _player in Helper.GetValidPlayers())
-						{
-							using (new WithTemporaryCulture(_player.GetLanguage()))
-							{
-								StringBuilder sb = new(_localizer!["sa_prefix"]);
-								sb.Append(_localizer["sa_admin_tp_message", caller.PlayerName, player.PlayerName]);
-								_player.PrintToChat(sb.ToString());
-							}
-						}
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_tp_message", caller.PlayerName, player.PlayerName]);
+						controller.PrintToChat(sb.ToString());
 					}
 				}
 			});
@@ -769,14 +730,12 @@ namespace CS2_SimpleAdmin
 		{
 			if (caller == null || !caller.PawnIsAlive) return;
 
-			string callerName = caller == null ? "Console" : caller.PlayerName;
-
-			TargetResult? targets = GetTarget(command);
+			var targets = GetTarget(command);
 
 			if (targets == null || targets.Count() > 1)
 				return;
 
-			List<CCSPlayerController> playersToTarget = targets!.Players.Where(player => player != null && player.IsValid && !player.IsHLTV).ToList();
+			var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
 
 			Helper.LogCommand(caller, command);
 			Helper.SendDiscordLogMessage(caller, command, _discordWebhookClientLog, _localizer);
@@ -786,27 +745,23 @@ namespace CS2_SimpleAdmin
 				if (!player.IsBot && player.SteamID.ToString().Length != 17 || !player.PawnIsAlive)
 					return;
 
-				if (caller!.CanTarget(player))
+				if (!caller.CanTarget(player)) return;
+				player.TeleportPlayer(caller);
+				caller.Pawn.Value!.ToggleNoclip();
+
+				AddTimer(3, () =>
 				{
-					player!.TeleportPlayer(caller!);
-					caller!.Pawn.Value!.ToggleNoclip();
+					caller.Pawn.Value!.ToggleNoclip();
+				});
 
-					AddTimer(3, () =>
+				if (silentPlayers.Contains(caller.Slot)) return;
+				foreach (var controller in Helper.GetValidPlayers())
+				{
+					using (new WithTemporaryCulture(controller.GetLanguage()))
 					{
-						caller!.Pawn.Value!.ToggleNoclip();
-					});
-
-					if (caller != null && !silentPlayers.Contains(caller.Slot))
-					{
-						foreach (CCSPlayerController _player in Helper.GetValidPlayers())
-						{
-							using (new WithTemporaryCulture(_player.GetLanguage()))
-							{
-								StringBuilder sb = new(_localizer!["sa_prefix"]);
-								sb.Append(_localizer["sa_admin_bring_message", caller.PlayerName, player.PlayerName]);
-								_player.PrintToChat(sb.ToString());
-							}
-						}
+						StringBuilder sb = new(_localizer!["sa_prefix"]);
+						sb.Append(_localizer["sa_admin_bring_message", caller.PlayerName, player.PlayerName]);
+						controller.PrintToChat(sb.ToString());
 					}
 				}
 			});
