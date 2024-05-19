@@ -1,4 +1,4 @@
-using CounterStrikeSharp.API.Core;
+﻿using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
@@ -725,7 +725,7 @@ namespace CS2_SimpleAdmin
 		[ConsoleCommand("css_bring", "Teleport a player to you.")]
 		[ConsoleCommand("css_tphere", "Teleport a player to you.")]
 		[CommandHelper(1, "<#userid or name>")]
-		[RequiresPermissions("@css/kick")]
+		[RequiresPermissions("@css/cheats")]
 		public void OnBringCommand(CCSPlayerController? caller, CommandInfo command)
 		{
 			if (caller == null || !caller.PawnIsAlive) return;
