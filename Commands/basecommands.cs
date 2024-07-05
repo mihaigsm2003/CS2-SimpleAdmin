@@ -318,7 +318,6 @@ namespace CS2_SimpleAdmin
 
 			Task.Run(async () =>
 			{
-
 				await adminManager.CrateGroupsJsonFile();
 				await adminManager.CreateAdminsJsonFile();
 
@@ -326,6 +325,7 @@ namespace CS2_SimpleAdmin
 				{
 					AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json");
 					AddTimer(1.0f, () => AdminManager.LoadAdminGroups(ModuleDirectory + "/data/groups.json"));
+					AddTimer(1.5f, () => AdminManager.LoadAdminData(ModuleDirectory + "/data/admins.json"));
 				});
 			});
 
@@ -522,7 +522,7 @@ namespace CS2_SimpleAdmin
 
 			playersToTarget.ForEach(player =>
 			{
-				if (!player.IsBot && player.SteamID.ToString().Length != 17)
+				if (!player.IsValid)
 					return;
 
 				if (caller!.CanTarget(player))
@@ -535,6 +535,7 @@ namespace CS2_SimpleAdmin
 		public void Kick(CCSPlayerController? caller, CCSPlayerController? player, string? reason = "Unknown", string? callerName = null, CommandInfo? command = null)
 		{
 			if (player == null || !player.IsValid) return;
+			if (!caller.CanTarget(player)) return;
 
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 			reason ??= _localizer?["sa_unknown"] ?? "Unknown";
@@ -550,7 +551,7 @@ namespace CS2_SimpleAdmin
 				if (player != null && !player.IsBot)
 					using (new WithTemporaryCulture(player.GetLanguage()))
 					{
-						player.PrintToCenter(_localizer!["sa_player_kick_message", reason, caller == null ? "Console" : caller.PlayerName]);
+						player.PrintToCenter(_localizer!["sa_player_kick_message", reason, callerName]);
 					}
 				if (player != null && player.UserId.HasValue)
 					AddTimer(Config.KickTime, () => Helper.KickPlayer(player.UserId.Value, reason),
@@ -564,7 +565,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && (caller.UserId == null || SilentPlayers.Contains(caller.Slot))) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 
 				using (new WithTemporaryCulture(controller.GetLanguage()))

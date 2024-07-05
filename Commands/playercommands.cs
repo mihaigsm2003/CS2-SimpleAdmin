@@ -33,6 +33,8 @@ namespace CS2_SimpleAdmin
 		{
 			if (player == null || !player.IsValid || player.Connected != PlayerConnectedState.PlayerConnected)
 				return;
+			if (!caller.CanTarget(player)) return;
+
 
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
@@ -45,7 +47,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -103,6 +105,8 @@ namespace CS2_SimpleAdmin
 
 		public void GiveWeapon(CCSPlayerController? caller, CCSPlayerController player, CsItem weapon, string? callerName = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			Helper.LogCommand(caller, $"css_give {player.PlayerName} {weapon.ToString()}");
 
 			player.GiveNamedItem(weapon);
@@ -111,6 +115,8 @@ namespace CS2_SimpleAdmin
 
 		private void GiveWeapon(CCSPlayerController? caller, CCSPlayerController player, string weaponName, string? callerName = null, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			if (command != null)
 			{
 				Helper.LogCommand(caller, command);
@@ -123,10 +129,12 @@ namespace CS2_SimpleAdmin
 
 		private void SubGiveWeapon(CCSPlayerController? caller, CCSPlayerController player, string weaponName, string? callerName = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			if (caller != null && (SilentPlayers.Contains(caller.Slot))) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -159,6 +167,8 @@ namespace CS2_SimpleAdmin
 
 		public void StripWeapons(CCSPlayerController? caller, CCSPlayerController? player, string? callerName = null, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			if (player == null || !player.IsValid || !player.PawnIsAlive || player.Connected != PlayerConnectedState.PlayerConnected)
@@ -173,7 +183,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -207,8 +217,10 @@ namespace CS2_SimpleAdmin
 
 		public void SetHp(CCSPlayerController? caller, CCSPlayerController? player, int health, CommandInfo? command = null)
 		{
-			if (player != null && !player.IsBot && player.Connected == PlayerConnectedState.PlayerConnected)
+			if (player == null || !player.IsValid || player.IsHLTV)
 				return;
+
+			if (!caller.CanTarget(player)) return;
 
 			var callerName = caller == null ? "Console" : caller.PlayerName;
 
@@ -221,7 +233,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -259,6 +271,8 @@ namespace CS2_SimpleAdmin
 
 		public void SetSpeed(CCSPlayerController? caller, CCSPlayerController? player, double speed, string? callerName = null, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			player.SetSpeed((float)speed);
@@ -270,7 +284,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -310,6 +324,8 @@ namespace CS2_SimpleAdmin
 
 		public void SetGravity(CCSPlayerController? caller, CCSPlayerController? player, double gravity, string? callerName = null, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			player.SetGravity((float)gravity);
@@ -321,7 +337,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -359,6 +375,8 @@ namespace CS2_SimpleAdmin
 
 		public void SetMoney(CCSPlayerController? caller, CCSPlayerController? player, int money, string? callerName = null, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			player.SetMoney(money);
@@ -370,7 +388,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -406,6 +424,8 @@ namespace CS2_SimpleAdmin
 
 		public void God(CCSPlayerController? caller, CCSPlayerController? player, string? callerName = null, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			if (player == null) return;
@@ -425,7 +445,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -467,21 +487,28 @@ namespace CS2_SimpleAdmin
 
 		public void Slap(CCSPlayerController? caller, CCSPlayerController? player, int damage, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			var callerName = caller == null ? "Console" : caller.PlayerName;
 			player!.Pawn.Value!.Slap(damage);
 
 			if (command != null)
 			{
 				Helper.LogCommand(caller, command);
-				Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
+				if (_localizer != null)
+					Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
 			}
 
+			if (_localizer == null)
+				return;
+
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
-					StringBuilder sb = new(_localizer!["sa_prefix"]);
+					StringBuilder sb = new(_localizer["sa_prefix"]);
 					sb.Append(_localizer["sa_admin_slap_message", callerName, player.PlayerName]);
 					controller.PrintToChat(sb.ToString());
 				}
@@ -541,6 +568,8 @@ namespace CS2_SimpleAdmin
 			if (player == null || !player.IsValid || player.Connected != PlayerConnectedState.PlayerConnected)
 				return;
 
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			if (!teamName.Equals("swap"))
@@ -569,7 +598,7 @@ namespace CS2_SimpleAdmin
 
 			if (caller == null || !SilentPlayers.Contains(caller.Slot))
 			{
-				foreach (var controller in Helper.GetValidPlayers())
+				foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 				{
 					using (new WithTemporaryCulture(controller.GetLanguage()))
 					{
@@ -611,7 +640,7 @@ namespace CS2_SimpleAdmin
 				if (!caller!.CanTarget(player)) return;
 				if (caller == null || !SilentPlayers.Contains(caller.Slot))
 				{
-					foreach (var controller in Helper.GetValidPlayers())
+					foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 					{
 						using (new WithTemporaryCulture(controller.GetLanguage()))
 						{
@@ -620,6 +649,53 @@ namespace CS2_SimpleAdmin
 							controller.PrintToChat(sb.ToString());
 						}
 					}
+				}
+
+				player.Rename(newName);
+			});
+		}
+
+		[ConsoleCommand("css_prename", "Permanent rename a player.")]
+		[CommandHelper(1, "<#userid or name> <new name>")]
+		[RequiresPermissions("@css/ban")]
+		public void OnPRenameCommand(CCSPlayerController? caller, CommandInfo command)
+		{
+			var callerName = caller == null ? "Console" : caller.PlayerName;
+			var newName = command.GetArg(2);
+
+			var targets = GetTarget(command);
+			if (targets == null) return;
+			var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsHLTV: false }).ToList();
+
+			Helper.LogCommand(caller, command);
+			Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
+
+			playersToTarget.ForEach(player =>
+			{
+				if (player.Connected != PlayerConnectedState.PlayerConnected)
+					return;
+
+				if (!caller!.CanTarget(player)) return;
+				if (caller == null || !SilentPlayers.Contains(caller.Slot) && !string.IsNullOrEmpty(newName))
+				{
+					foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
+					{
+						using (new WithTemporaryCulture(controller.GetLanguage()))
+						{
+							StringBuilder sb = new(_localizer!["sa_prefix"]);
+							sb.Append(_localizer["sa_admin_rename_message", callerName, player.PlayerName, newName]);
+							controller.PrintToChat(sb.ToString());
+						}
+					}
+				}
+
+				if (!string.IsNullOrEmpty(newName))
+				{
+					RenamedPlayers[player.SteamID] = newName;
+				}
+				else
+				{
+					RenamedPlayers.Remove(player.SteamID);
 				}
 
 				player.Rename(newName);
@@ -651,6 +727,8 @@ namespace CS2_SimpleAdmin
 
 		public void Respawn(CCSPlayerController? caller, CCSPlayerController? player, string? callerName = null, CommandInfo? command = null)
 		{
+			if (!caller.CanTarget(player)) return;
+
 			callerName ??= caller == null ? "Console" : caller.PlayerName;
 
 			if (_cBasePlayerControllerSetPawnFunc == null || player?.PlayerPawn.Value == null || !player.PlayerPawn.IsValid) return;
@@ -667,7 +745,7 @@ namespace CS2_SimpleAdmin
 			}
 
 			if (caller != null && SilentPlayers.Contains(caller.Slot)) return;
-			foreach (var controller in Helper.GetValidPlayers())
+			foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 			{
 				using (new WithTemporaryCulture(controller.GetLanguage()))
 				{
@@ -712,7 +790,7 @@ namespace CS2_SimpleAdmin
 				});
 
 				if (SilentPlayers.Contains(caller.Slot)) return;
-				foreach (var controller in Helper.GetValidPlayers())
+				foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 				{
 					using (new WithTemporaryCulture(controller.GetLanguage()))
 					{
@@ -757,7 +835,7 @@ namespace CS2_SimpleAdmin
 				});
 
 				if (SilentPlayers.Contains(caller.Slot)) return;
-				foreach (var controller in Helper.GetValidPlayers())
+				foreach (var controller in Helper.GetValidPlayers().Where(controller => controller is { IsValid: true, IsBot: false }))
 				{
 					using (new WithTemporaryCulture(controller.GetLanguage()))
 					{

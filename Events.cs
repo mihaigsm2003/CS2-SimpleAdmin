@@ -22,7 +22,7 @@ public partial class CS2_SimpleAdmin
 
 	private void OnGameServerSteamAPIActivated()
 	{
-		AddTimer(8.5f, () =>
+		AddTimer(3.0f, () =>
 		{
 			if (ServerId != null || _database == null) return;
 
@@ -31,8 +31,6 @@ public partial class CS2_SimpleAdmin
 			if (string.IsNullOrEmpty(ipAddress) || ipAddress.StartsWith("0.0.0"))
 			{
 				ipAddress = Helper.GetServerIp();
-				Logger.LogError("Unable to get server ip, Check that you have added the correct start parameter \"-ip <ip>\"");
-				Logger.LogError($"Using alternative method... Server IP {ipAddress}");
 			}
 
 			if (string.IsNullOrEmpty(ipAddress) || ipAddress.StartsWith("0.0.0"))
@@ -46,8 +44,6 @@ public partial class CS2_SimpleAdmin
 
 			Task.Run(async () =>
 			{
-				PermissionManager adminManager = new(_database);
-
 				try
 				{
 					await using var connection = await _database.GetConnectionAsync();
@@ -73,10 +69,16 @@ public partial class CS2_SimpleAdmin
 						new { address });
 
 					ServerId = serverId;
+
+					if (ServerId != null)
+					{
+						Server.NextFrame(() => ReloadAdmins(null));
+					}
+
 				}
 				catch (Exception ex)
 				{
-					_logger?.LogCritical("Unable to create or get server_id" + ex.Message);
+					_logger?.LogCritical("Unable to create or get server_id: " + ex.Message);
 				}
 
 				if (Config.EnableMetrics)
@@ -182,13 +184,28 @@ public partial class CS2_SimpleAdmin
 
 			try
 			{
+				await using var connection = await _database.GetConnectionAsync();
+
+				const string query = @"INSERT IGNORE INTO `sa_players_ips` (steamid, address)
+									VALUES (@SteamID, @IPAddress)";
+
+				await connection.ExecuteAsync(query, new
+				{
+					SteamID = playerInfo.SteamId,
+					IPAddress = playerInfo.IpAddress,
+				});
+			}
+			catch { }
+
+			try
+			{
 				// Check if the player is banned
 				bool isBanned = await banManager.IsPlayerBanned(playerInfo);
 				if (isBanned)
 				{
 					// Add player's IP and SteamID to bannedPlayers list if not already present
 					if (Config.BanType > 0 && playerInfo.IpAddress != null &&
-					    !BannedPlayers.Contains(playerInfo.IpAddress))
+						!BannedPlayers.Contains(playerInfo.IpAddress))
 					{
 						BannedPlayers.Add(playerInfo.IpAddress);
 					}
@@ -202,7 +219,7 @@ public partial class CS2_SimpleAdmin
 					await Server.NextFrameAsync(() =>
 					{
 						var victim = Utilities.GetPlayerFromUserid(playerInfo.UserId);
-						
+
 						if (victim?.UserId != null)
 						{
 							if (UnlockedCommands)
@@ -264,6 +281,11 @@ public partial class CS2_SimpleAdmin
 				Logger.LogError($"Error processing player connection: {ex}");
 			}
 		});
+
+		if (RenamedPlayers.TryGetValue(player.SteamID, out var name))
+		{
+			player.Rename(name);
+		}
 
 		return HookResult.Continue;
 	}
@@ -339,8 +361,8 @@ public partial class CS2_SimpleAdmin
 
 	public void OnMapStart(string mapName)
 	{
-		if (Config.ReloadAdminsEveryMapChange)
-			AddTimer(3.0f, () => ReloadAdmins(null));
+		if (Config.ReloadAdminsEveryMapChange && ServerId != null)
+			AddTimer(2.0f, () => ReloadAdmins(null));
 
 		var path = Path.GetDirectoryName(ModuleDirectory);
 		if (Directory.Exists(path + "/CS2-Tags"))
@@ -355,6 +377,7 @@ public partial class CS2_SimpleAdmin
 
 		_database = new Database.Database(_dbConnectionString);
 
+		/*
 		AddTimer(2f, () =>
 		{
 			if (ServerId != null) return;
@@ -365,8 +388,6 @@ public partial class CS2_SimpleAdmin
 			{
 				return;
 				ipAddress = Helper.GetServerIp();
-				Logger.LogError("Unable to get server ip, Check that you have added the correct start parameter \"-ip <ip>\"");
-				Logger.LogError($"Using alternative method... Server IP {ipAddress}");
 			}
 
 			var address = $"{ipAddress}:{ConVar.Find("hostport")?.GetPrimitiveValue<int>()}";
@@ -374,8 +395,6 @@ public partial class CS2_SimpleAdmin
 
 			Task.Run(async () =>
 			{
-				PermissionManager adminManager = new(_database);
-
 				try
 				{
 					await using var connection = await _database.GetConnectionAsync();
@@ -423,7 +442,7 @@ public partial class CS2_SimpleAdmin
 				}
 			});
 		});
-
+		*/
 		AddTimer(61.0f, () =>
 		{
 #if DEBUG
@@ -510,6 +529,25 @@ public partial class CS2_SimpleAdmin
 
 		player.PlayerPawn.Value.Health = player.PlayerPawn.Value.MaxHealth;
 		player.PlayerPawn.Value.ArmorValue = 100;
+
+		return HookResult.Continue;
+	}
+
+	[GameEventHandler]
+	public HookResult OnChangedName(EventPlayerChangename @event, GameEventInfo _)
+	{
+		CCSPlayerController? player = @event.Userid;
+
+		if (player is null || !player.IsValid || player.IsBot)
+			return HookResult.Continue;
+
+		if (RenamedPlayers.TryGetValue(player.SteamID, out var name))
+		{
+			if (@event.Newname.Equals(name))
+				return HookResult.Continue;
+
+			player.Rename(name);
+		}
 
 		return HookResult.Continue;
 	}
