@@ -732,7 +732,7 @@ namespace CS2_SimpleAdmin
 		[ConsoleCommand("css_rg")]
 		[ConsoleCommand("css_restart")]
 		[ConsoleCommand("css_restartgame")]
-		[RequiresPermissions("@css/generic")]
+		[RequiresPermissions("@css/cheats")]
 		[CommandHelper(minArgs: 0, usage: "", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
 		public void OnRestartCommand(CCSPlayerController? caller, CommandInfo command)
 		{
