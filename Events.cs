@@ -44,9 +44,7 @@ public partial class CS2_SimpleAdmin
 					return;
 				}
 			}
-
-			_getIpTryCount = 0;
-
+			
 			var address = $"{ipAddress}:{ConVar.Find("hostport")?.GetPrimitiveValue<int>()}";
 			var hostname = ConVar.Find("hostname")!.StringValue;
 
@@ -106,6 +104,8 @@ public partial class CS2_SimpleAdmin
 				}
 			});
 		});
+		
+		_getIpTryCount = 0;
 	}
 
 	[GameEventHandler]
@@ -229,7 +229,7 @@ public partial class CS2_SimpleAdmin
 					// Kick the player if banned
 					await Server.NextFrameAsync(() =>
 					{
-						var victim = Utilities.GetPlayerFromUserid(playerInfo.UserId);
+						var victim = Utilities.GetPlayerFromUserid(playerInfo.UserId.Value);
 
 						if (victim?.UserId != null)
 						{
@@ -370,10 +370,16 @@ public partial class CS2_SimpleAdmin
 		return HookResult.Handled;
 	}
 
-	public void OnMapStart(string mapName)
+	private void OnMapStart(string mapName)
 	{
 		if (Config.ReloadAdminsEveryMapChange && _serverLoaded && ServerId != null)
 			AddTimer(3.0f, () => ReloadAdmins(null));
+
+		AddTimer(34, () =>
+		{
+			if (!_serverLoaded)
+				OnGameServerSteamAPIActivated();
+		});
 
 		var path = Path.GetDirectoryName(ModuleDirectory);
 		if (Directory.Exists(path + "/CS2-Tags"))
@@ -405,8 +411,11 @@ public partial class CS2_SimpleAdmin
 				PermissionManager adminManager = new(_database);
 				BanManager banManager = new(_database, Config);
 				MuteManager muteManager = new(_database);
-
+				WarnManager warnManager = new(_database);
+				
+				await muteManager.ExpireOldMutes();
 				await banManager.ExpireOldBans();
+				await warnManager.ExpireOldWarns();
 				await adminManager.DeleteOldAdmins();
 
 				BannedPlayers.Clear();
@@ -429,7 +438,6 @@ public partial class CS2_SimpleAdmin
 					}
 				}
 
-				await muteManager.ExpireOldMutes();
 
 				await Server.NextFrameAsync(() =>
 				{

@@ -37,6 +37,7 @@
 	"sa_gag": "Заглушить",
 	"sa_mute": "Отключить звук",
 	"sa_silence": "Тишина",
+	"sa_warn": "Предупреждение",
 	"sa_team_force": "Принудить к команде",
 
 	"sa_menu_custom_commands": "Пользовательские команды",
@@ -56,6 +57,7 @@
 	"sa_discord_penalty_mute": "Мут зарегистрирован",
 	"sa_discord_penalty_gag": "Запрет зарегистрирован",
 	"sa_discord_penalty_silence": "Молчание зарегистрировано",
+	"sa_discord_penalty_warn": "Предупреждение зарегистрировано",
 	"sa_discord_penalty_unknown": "Неизвестно зарегистрировано",
 
 	"sa_player_ban_message_time": "Вы были забанены по причине {lightred}{0}{default} на {lightred}{1}{default} минут(ы) администратором {lightred}{2}{default}!",
@@ -67,6 +69,8 @@
 	"sa_player_mute_message_perm": "Вам навсегда запрещено использовать голосовой чат по причине {lightred}{0}{default} администратором {lightred}{1}{default}!",
 	"sa_player_silence_message_time": "Вам запрещено общаться по причине {lightred}{0}{default} на {lightred}{1}{default} минут(ы) администратором {lightred}{2}{default}!",
 	"sa_player_silence_message_perm": "Вам навсегда запрещено общаться по причине {lightred}{0}{default} администратором {lightred}{1}{default}!",
+	"sa_player_warn_message_time": "Вы получили предупреждение за {lightred}{0}{default} на {lightred}{1}{default} минут от {lightred}{2}{default}!",
+	"sa_player_warn_message_perm": "Вы получили постоянное предупреждение за {lightred}{0}{default} от {lightred}{1}{default}!",
 	"sa_admin_ban_message_time": "Администратор {lightred}{0}{default} забанил {lightred}{1}{default} по причине {lightred}{2}{default} на {lightred}{3}{default} минут(ы)!",
 	"sa_admin_ban_message_perm": "Администратор {lightred}{0}{default} забанил {lightred}{1}{default} навсегда по причине {lightred}{2}{default}!",
 	"sa_admin_kick_message": "Администратор {lightred}{0}{default} выгнал {lightred}{1}{default} по причине {lightred}{2}{default}!",
@@ -76,6 +80,8 @@
 	"sa_admin_mute_message_perm": "Администратор {lightred}{0}{default} запретил использовать голосовой чат {lightred}{1}{default} навсегда по причине {lightred}{2}{default}!",
 	"sa_admin_silence_message_time": "Администратор {lightred}{0}{default} запретил общаться {lightred}{1}{default} по причине {lightred}{2}{default} на {lightred}{3}{default} минут(ы)!",
 	"sa_admin_silence_message_perm": "Администратор {lightred}{0}{default} запретил общаться {lightred}{1}{default} навсегда по причине {lightred}{2}{default}!",
+	"sa_admin_warn_message_time": "Администратор {lightred}{0}{default} предупредил {lightred}{1}{default} за {lightred}{2}{default} на {lightred}{3}{default} минут!",
+	"sa_admin_warn_message_perm": "Администратор {lightred}{0}{default} предупредил {lightred}{1}{default} навсегда за {lightred}{2}{default}!",
 	"sa_admin_give_message": "Администратор {lightred}{0}{default} выдал {lightred}{1}{default} {lightred}{2}{default}!",
 	"sa_admin_strip_message": "Администратор {lightred}{0}{default} забрал все оружия у игрока {lightred}{1}{default}!",
 	"sa_admin_hp_message": "Администратор {lightred}{0}{default} изменил количество HP на {lightred}{1}{default}!",
@@ -93,6 +99,8 @@
 	"sa_admin_tp_message": "Администратор {lightred}{0}{default} телепортировался к {lightred}{1}{default}!",
 	"sa_admin_bring_message": "Администратор {lightred}{0}{default} телепортировал {lightred}{1}{default} к себе!",
 	"sa_admin_team_message": "Администратор {lightred}{0}{default} переместил {lightred}{1}{default} в команду {lightred}{2}{default}!",
+	"sa_admin_warns_menu_title": "{gold}{0} {lime}ПРЕДУПРЕЖДЕНИЯ",
+	"sa_admin_warns_unwarn": "{lime}Успешно{default} удалено предупреждение у {gold}{0} {default}от {gold}{1}{default}!",
 	"sa_admin_vote_menu_title": "{lime}ГОЛОСОВАНИЕ ЗА {gold}{0}",
 	"sa_admin_vote_message": "Администратор {lightred}{0}{default} начал голосование за {lightred}{1}{default}",
 	"sa_admin_vote_message_results": "{lime}РЕЗУЛЬТАТЫ ГОЛОСОВАНИЯ ЗА {gold}{0}",
@@ -101,5 +109,5 @@
 	"sa_adminchat_template_admin": "{LIME}(АДМИНИСТРАТОР) {lightred}{0}{default}: {lightred}{1}{default}",
 	"sa_adminchat_template_player": "{SILVER}(ИГРОК) {lightred}{0}{default}: {lightred}{1}{default}",
 
-	"sa_discord_log_command": "**{0}** выполнил команду `{1}` на сервере `HOSTNAME`",
+	"sa_discord_log_command": "**{0}** выполнил команду `{1}` на сервере `HOSTNAME`"
 }

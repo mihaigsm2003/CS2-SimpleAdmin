@@ -6,6 +6,7 @@ using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Entities;
+using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Utils;
 using CS2_SimpleAdmin.Menus;
 using Microsoft.Extensions.Logging;
@@ -135,8 +136,6 @@ namespace CS2_SimpleAdmin
 			var flagsList = flags.Split(',').Select(flag => flag.Trim()).ToList();
 			_ = adminManager.AddAdminBySteamId(steamid, name, flagsList, immunity, time, globalAdmin);
 
-			if (command != null)
-				Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
 			Helper.LogCommand(caller, $"css_addadmin {steamid} {name} {flags} {immunity} {time}");
 
 			var msg = $"Added '{flags}' flags to '{name}' ({steamid})";
@@ -185,8 +184,6 @@ namespace CS2_SimpleAdmin
 				AdminManager.RemovePlayerAdminData(steamId);
 			}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 
-			if (command != null)
-				Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
 			Helper.LogCommand(caller, $"css_deladmin {steamid}");
 
 			var msg = $"Removed flags from '{steamid}'";
@@ -233,8 +230,6 @@ namespace CS2_SimpleAdmin
 			var flagsList = flags.Split(',').Select(flag => flag.Trim()).ToList();
 			_ = adminManager.AddGroup(name, flagsList, immunity, globalGroup);
 
-			if (command != null)
-				Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
 			Helper.LogCommand(caller, $"css_addgroup {name} {flags} {immunity}");
 
 			var msg = $"Created group '{name}' with flags '{flags}'";
@@ -275,8 +270,6 @@ namespace CS2_SimpleAdmin
 				ReloadAdmins(caller);
 			}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 
-			if (command != null)
-				Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
 			Helper.LogCommand(caller, $"css_delgroup {name}");
 
 			var msg = $"Removed group '{name}'";
@@ -348,7 +341,7 @@ namespace CS2_SimpleAdmin
 
 			Helper.LogCommand(caller, command);
 
-			if (SilentPlayers.Contains(caller.Slot))
+			if (!SilentPlayers.Add(caller.Slot))
 			{
 				SilentPlayers.Remove(caller.Slot);
 				caller.PrintToChat($"You aren't hidden now!");
@@ -356,7 +349,6 @@ namespace CS2_SimpleAdmin
 			}
 			else
 			{
-				SilentPlayers.Add(caller.Slot);
 				Server.ExecuteCommand("sv_disable_teamselect_menu 1");
 
 				if (caller.PlayerPawn.Value != null && caller.PawnIsAlive)
@@ -430,6 +422,63 @@ namespace CS2_SimpleAdmin
 						}
 
 						printMethod($"--------- END INFO ABOUT \"{player.PlayerName}\" ---------");
+					});
+				});
+			});
+		}
+		
+		[ConsoleCommand("css_warns")]
+		[CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+		[RequiresPermissions("@css/kick")]
+		public void OnWarnsCommand(CCSPlayerController? caller, CommandInfo command)
+		{
+			if (_database == null) return;
+			
+			var targets = GetTarget(command);
+			if (targets == null) return;
+
+			Helper.LogCommand(caller, command);
+
+			var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsBot: false }).ToList();
+
+			if (playersToTarget.Count > 1)
+				return;
+			
+			Database.Database database = new(_dbConnectionString);
+			WarnManager warnManager = new(database);
+
+			playersToTarget.ForEach(player =>
+			{
+				if (!player.UserId.HasValue) return;
+				if (!caller!.CanTarget(player)) return;
+
+				var steamid = player.SteamID.ToString();
+				
+				BaseMenu warnsMenu = Config.UseChatMenu
+					? new ChatMenu(_localizer!["sa_admin_warns_menu_title", player.PlayerName])
+					: new CenterHtmlMenu(_localizer!["sa_admin_warns_menu_title", player.PlayerName], Instance);
+
+				Task.Run(async () =>
+				{
+					var warnsList = await warnManager.GetPlayerWarns(steamid, false);
+					var sortedWarns = warnsList
+						.OrderBy(warn => (string)warn.status == "ACTIVE" ? 0 : 1)
+						.ThenByDescending(warn => (int)warn.id)
+						.ToList();
+					
+					sortedWarns.ForEach(w =>
+					{
+						warnsMenu.AddMenuOption($"[{((string)w.status == "ACTIVE" ? $"{ChatColors.LightRed}X" : $"{ChatColors.Lime}✔️")}{ChatColors.Default}] {(string)w.reason}",
+							(controller, option) =>
+							{
+								_ = warnManager.UnwarnPlayer(steamid, (int)w.id);
+								player.PrintToChat(_localizer["sa_admin_warns_unwarn", player.PlayerName, (string)w.reason]);
+							});
+					});
+					
+					await Server.NextFrameAsync(() =>
+					{
+						warnsMenu.Open(player);
 					});
 				});
 			});
@@ -547,24 +596,22 @@ namespace CS2_SimpleAdmin
 
 			player.Pawn.Value!.Freeze();
 
-			if (command != null)
-				Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
-			Helper.LogCommand(caller, $"css_kick {player?.PlayerName} {reason}");
+			Helper.LogCommand(caller, $"css_kick {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {reason}");
 
 			if (string.IsNullOrEmpty(reason) == false)
 			{
-				if (player != null && !player.IsBot)
+				if (!player.IsBot)
 					using (new WithTemporaryCulture(player.GetLanguage()))
 					{
 						player.PrintToCenter(_localizer!["sa_player_kick_message", reason, callerName]);
 					}
-				if (player != null && player.UserId.HasValue)
+				if (player.UserId.HasValue)
 					AddTimer(Config.KickTime, () => Helper.KickPlayer(player.UserId.Value, reason),
 						CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 			}
 			else
 			{
-				if (player != null && player.UserId.HasValue)
+				if (player.UserId.HasValue)
 					AddTimer(Config.KickTime, () => Helper.KickPlayer(player.UserId.Value),
 						CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 			}
@@ -638,9 +685,7 @@ namespace CS2_SimpleAdmin
 				}
 			}
 
-			if (command == null) return;
-			Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
-			Helper.LogCommand(caller, command);
+			Helper.LogCommand(caller, command?.GetCommandString ?? $"css_map {map}");
 		}
 
 		[ConsoleCommand("css_changewsmap", "Change workshop map.")]
@@ -677,9 +722,7 @@ namespace CS2_SimpleAdmin
 				Server.ExecuteCommand(issuedCommand);
 			}, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
 
-			if (command == null) return;
-			Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
-			Helper.LogCommand(caller, command);
+			Helper.LogCommand(caller, command?.GetCommandString ?? $"css_wsmap {map}");
 		}
 
 		[ConsoleCommand("css_cvar", "Change a cvar.")]
@@ -702,7 +745,6 @@ namespace CS2_SimpleAdmin
 				return;
 			}
 
-			Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
 			Helper.LogCommand(caller, command);
 
 			var value = command.GetArg(2);
@@ -720,7 +762,6 @@ namespace CS2_SimpleAdmin
 		{
 			var callerName = caller == null ? "Console" : caller.PlayerName;
 
-			Helper.SendDiscordLogMessage(caller, command, DiscordWebhookClientLog, _localizer);
 			Helper.LogCommand(caller, command);
 
 			Server.ExecuteCommand(command.ArgString);
