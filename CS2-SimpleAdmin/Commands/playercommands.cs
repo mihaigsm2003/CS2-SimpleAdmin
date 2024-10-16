@@ -206,7 +206,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <health>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnHpCommand(CCSPlayerController? caller, CommandInfo command)
     {
