@@ -55,7 +55,7 @@ public partial class CS2_SimpleAdmin
             Helper.LogCommand(caller, command);
     }
 
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 2, usage: "<#userid or name> <weapon>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnGiveCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -155,7 +155,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnStripCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -206,7 +206,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <health>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnHpCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -255,7 +255,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <speed>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnSpeedCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -308,7 +308,7 @@ public partial class CS2_SimpleAdmin
     }
 
     [ConsoleCommand("css_gravity")]
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <gravity>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnGravityCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -360,7 +360,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <money>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnMoneyCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -719,7 +719,7 @@ public partial class CS2_SimpleAdmin
     }
 
     [CommandHelper(1, "<#userid or name>")]
-    [RequiresPermissions("@css/kick")]
+    [RequiresPermissions("@css/cheats")]
     public void OnGotoCommand(CCSPlayerController? caller, CommandInfo command)
     {
         // Check if the caller is valid and has a live pawn
@@ -762,7 +762,7 @@ public partial class CS2_SimpleAdmin
     }
 
     [CommandHelper(1, "<#userid or name>")]
-    [RequiresPermissions("@css/kick")]
+    [RequiresPermissions("@css/cheats")]
     public void OnBringCommand(CCSPlayerController? caller, CommandInfo command)
     {
         // Check if the caller is valid and has a live pawn
