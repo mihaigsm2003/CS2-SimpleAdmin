@@ -691,7 +691,7 @@ public partial class CS2_SimpleAdmin
 
     internal static void Respawn(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
     {
-        // Check if the caller can target the player
+        // Check if the caller can target the player 
         if (!caller.CanTarget(player)) return;
 
         // Set default caller name if not provided
