@@ -1,5 +1,5 @@
+using System.Globalization;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
@@ -10,6 +10,9 @@ namespace CS2_SimpleAdmin;
 
 public partial class CS2_SimpleAdmin
 {
+    internal static readonly Dictionary<int, float> SpeedPlayers = [];
+    internal static readonly Dictionary<CCSPlayerController, float> GravityPlayers = [];
+    
     [RequiresPermissions("@css/slay")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnSlayCommand(CCSPlayerController? caller, CommandInfo command)
@@ -55,7 +58,7 @@ public partial class CS2_SimpleAdmin
             Helper.LogCommand(caller, command);
     }
 
-    [RequiresPermissions("@css/root")]
+    [RequiresPermissions("@css/cheats")]
     [CommandHelper(minArgs: 2, usage: "<#userid or name> <weapon>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnGiveCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -161,7 +164,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/slay")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnStripCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -212,7 +215,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/root")]
+    [RequiresPermissions("@css/slay")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <health>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnHpCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -261,12 +264,11 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/slay")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <speed>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnSpeedCommand(CCSPlayerController? caller, CommandInfo command)
     {
-        var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
-        float.TryParse(command.GetArg(2), out var speed);
+        float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var speed);
 
         var targets = GetTarget(command);
         if (targets == null) return;
@@ -294,6 +296,11 @@ public partial class CS2_SimpleAdmin
 
         // Set player's speed
         player.SetSpeed(speed);
+        
+        if (speed == 1f)
+            SpeedPlayers.Remove(player.Slot);
+        else
+            SpeedPlayers[player.Slot] = speed;
 
         // Log the command
         if (command == null)
@@ -313,14 +320,12 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [ConsoleCommand("css_gravity")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/slay")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <gravity>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnGravityCommand(CCSPlayerController? caller, CommandInfo command)
     {
-        var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
-        float.TryParse(command.GetArg(2), out var gravity);
-
+        float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var gravity);
+        
         var targets = GetTarget(command);
         if (targets == null) return;
 
@@ -347,7 +352,12 @@ public partial class CS2_SimpleAdmin
 
         // Set player's gravity
         player.SetGravity(gravity);
-
+        
+        if (gravity == 1f)
+            GravityPlayers.Remove(player);
+        else
+            GravityPlayers[player] = gravity;
+        
         // Log the command
         if (command == null)
             Helper.LogCommand(caller, $"css_gravity {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {gravity}");
@@ -366,7 +376,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/slay")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <money>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnMoneyCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -452,7 +462,7 @@ public partial class CS2_SimpleAdmin
 
         // Set default caller name if not provided
         var callerName = caller != null ? caller.PlayerName : _localizer?["sa_console"] ?? "Console";
-
+        
         // Apply slap damage to the player
         player.Pawn.Value?.Slap(damage);
 
@@ -691,7 +701,7 @@ public partial class CS2_SimpleAdmin
 
     internal static void Respawn(CCSPlayerController? caller, CCSPlayerController player, string? callerName = null, CommandInfo? command = null)
     {
-        // Check if the caller can target the player 
+        // Check if the caller can target the player
         if (!caller.CanTarget(player)) return;
 
         // Set default caller name if not provided
@@ -725,7 +735,7 @@ public partial class CS2_SimpleAdmin
     }
 
     [CommandHelper(1, "<#userid or name>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/kick")]
     public void OnGotoCommand(CCSPlayerController? caller, CommandInfo command)
     {
         // Check if the caller is valid and has a live pawn
@@ -768,7 +778,7 @@ public partial class CS2_SimpleAdmin
     }
 
     [CommandHelper(1, "<#userid or name>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/kick")]
     public void OnBringCommand(CCSPlayerController? caller, CommandInfo command)
     {
         // Check if the caller is valid and has a live pawn
