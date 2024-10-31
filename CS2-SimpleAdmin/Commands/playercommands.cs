@@ -215,7 +215,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <health>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnHpCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -264,7 +264,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <speed>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnSpeedCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -320,7 +320,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <gravity>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnGravityCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -376,7 +376,7 @@ public partial class CS2_SimpleAdmin
         }
     }
 
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name> <money>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     public void OnMoneyCommand(CCSPlayerController? caller, CommandInfo command)
     {
