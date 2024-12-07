@@ -17,6 +17,8 @@ namespace CS2_SimpleAdmin;
 
 public partial class CS2_SimpleAdmin
 {
+    private bool _serverLoading;
+    
     private void RegisterEvents()
     {
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
@@ -49,6 +51,10 @@ public partial class CS2_SimpleAdmin
 
     private void OnGameServerSteamAPIActivated()
     {
+        if (_serverLoading)
+            return;
+        
+        _serverLoading = true;
         new ServerManager().LoadServerData();
     }
 
@@ -96,7 +102,7 @@ public partial class CS2_SimpleAdmin
             GravityPlayers.Remove(player);
             
             if (player.UserId.HasValue)
-                PlayersInfo.Remove(player.UserId.Value);
+                PlayersInfo.TryRemove(player.UserId.Value, out _);
 
             var authorizedSteamId = player.AuthorizedSteamID;
             if (authorizedSteamId == null || !PermissionManager.AdminCache.TryGetValue(authorizedSteamId,
@@ -122,7 +128,7 @@ public partial class CS2_SimpleAdmin
 
         if (player == null || !player.IsValid || player.IsBot)
             return HookResult.Continue;
-
+        
         new PlayerManager().LoadPlayerData(player);
 
         return HookResult.Continue;
@@ -132,7 +138,7 @@ public partial class CS2_SimpleAdmin
     public HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
     {
 #if DEBUG
-        Logger.LogCritical("[OnRoundEnd]");
+        Logger.LogCritical("[OnRoundStart]");
 #endif
 
         GodPlayers.Clear();
@@ -141,7 +147,7 @@ public partial class CS2_SimpleAdmin
         
         foreach (var player in PlayersInfo.Values)
         {
-            player.DiePosition = null;
+            player.DiePosition = default;
         }
 
         AddTimer(0.41f, () =>
@@ -209,7 +215,7 @@ public partial class CS2_SimpleAdmin
                 if (target == null || !target.IsValid || target.Connected != PlayerConnectedState.PlayerConnected)
                     return HookResult.Continue;
                 
-                return !AdminManager.CanPlayerTarget(player, target) ? HookResult.Stop : HookResult.Continue;
+                return !player.CanTarget(target) ? HookResult.Stop : HookResult.Continue;
             }
         }
 
@@ -328,11 +334,11 @@ public partial class CS2_SimpleAdmin
         if (Config.OtherSettings.ReloadAdminsEveryMapChange && ServerLoaded && ServerId != null)
             AddTimer(3.0f, () => ReloadAdmins(null));
 
-        AddTimer(34, () =>
-        {
-            if (!ServerLoaded)
-                OnGameServerSteamAPIActivated();
-        });
+        // AddTimer(34, () =>
+        // {
+        //     if (!ServerLoaded)
+        //         OnGameServerSteamAPIActivated();
+        // });
 
         GodPlayers.Clear();
         SilentPlayers.Clear();
@@ -349,9 +355,10 @@ public partial class CS2_SimpleAdmin
 
         if (player is null || @event.Attacker is null || !player.PawnIsAlive || player.PlayerPawn.Value == null)
             return HookResult.Continue;
+        
 
         if (SpeedPlayers.TryGetValue(player.Slot, out var speedPlayer))
-            player.SetSpeed(speedPlayer);
+            AddTimer(0.15f, () => player.SetSpeed(speedPlayer));
         
         if (!GodPlayers.Contains(player.Slot)) return HookResult.Continue;
 
@@ -365,23 +372,29 @@ public partial class CS2_SimpleAdmin
     public HookResult OnPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
     {
         var player = @event.Userid;
-
-        if (player?.UserId == null || player.IsBot || player.Connected != PlayerConnectedState.PlayerConnected)
+        
+        if (player?.UserId == null || !player.IsValid || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected)
             return HookResult.Continue;
 
         SpeedPlayers.Remove(player.Slot);
         GravityPlayers.Remove(player);
 
+        if (!PlayersInfo.ContainsKey(player.UserId.Value) || @event.Attacker == null)
+            return HookResult.Continue;
+
+        var playerPosition = player.PlayerPawn.Value?.AbsOrigin; 
+        var playerRotation = player.PlayerPawn.Value?.AbsRotation;
+        
         PlayersInfo[player.UserId.Value].DiePosition = new DiePosition(
             new Vector(
-                player.PlayerPawn.Value?.AbsOrigin?.X ?? 0,
-                player.PlayerPawn.Value?.AbsOrigin?.Y ?? 0,
-                player.PlayerPawn.Value?.AbsOrigin?.Z ?? 0
+                playerPosition?.X ?? 0,
+                playerPosition?.Y ?? 0,
+                playerPosition?.Z ?? 0
             ),
             new QAngle(
-                player.PlayerPawn.Value?.AbsRotation?.X ?? 0,
-                player.PlayerPawn.Value?.AbsRotation?.Y ?? 0,
-                player.PlayerPawn.Value?.AbsRotation?.Z ?? 0
+                playerRotation?.X ?? 0,
+                playerRotation?.Y ?? 0,
+                playerRotation?.Z ?? 0
             )
         );
 
