@@ -144,8 +144,8 @@ internal static class Helper
         if (player == null || !player.IsValid || player.IsHLTV)
             return;
         
-        if (player.UserId.HasValue)
-            CS2_SimpleAdmin.PlayersInfo[player.UserId.Value].WaitingForKick = true;
+        if (player.UserId.HasValue && CS2_SimpleAdmin.PlayersInfo.TryGetValue(player.UserId.Value, out var value))
+            value.WaitingForKick = true;
 
         player.CommitSuicide(true, true);
         
@@ -156,12 +156,16 @@ internal static class Helper
                 if (!player.IsValid || player.IsHLTV)
                     return;
                 
+                // Server.ExecuteCommand($"kickid {player.UserId}");
+
                 player.Disconnect(reason);
             });
         }
         else
         {
-            player.Disconnect(reason);
+            // Server.ExecuteCommand($"kickid {player.UserId}");
+
+            player.Disconnect(reason); 
         }
         
         if (CS2_SimpleAdmin.UnlockedCommands && reason == NetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED)
@@ -185,8 +189,8 @@ internal static class Helper
         if (!player.IsValid || player.IsHLTV)
             return;
 
-        if (player.UserId.HasValue)
-            CS2_SimpleAdmin.PlayersInfo[player.UserId.Value].WaitingForKick = true;
+        if (player.UserId.HasValue && CS2_SimpleAdmin.PlayersInfo.TryGetValue(player.UserId.Value, out var value))
+            value.WaitingForKick = true;
         
         player.CommitSuicide(true, true);
         
@@ -196,12 +200,25 @@ internal static class Helper
             {
                 if (!player.IsValid || player.IsHLTV)
                     return;
-
+                
+                // if (!string.IsNullOrEmpty(reason))
+                // {
+                // 	var escapeChars = reason.IndexOfAny([';', '|']);
+                //
+                // 	if (escapeChars != -1)
+                // 	{
+                // 		reason = reason[..escapeChars];
+                // 	}
+                // }
+                //
+                // Server.ExecuteCommand($"kickid {player.UserId}");
                 player.Disconnect(reason);
             });
         }
         else
         {
+            // Server.ExecuteCommand($"kickid {player.UserId}");
+
             player.Disconnect(reason);
         }
         
@@ -223,11 +240,14 @@ internal static class Helper
 
     public static int ParsePenaltyTime(string time)
     {
-        if (string.IsNullOrWhiteSpace(time))
+        if (string.IsNullOrWhiteSpace(time) || !time.Any(char.IsDigit))
         {
-            CS2_SimpleAdmin._logger?.LogError("Time string cannot be null or empty.");
+            // CS2_SimpleAdmin._logger?.LogError("Time string cannot be null or empty.");
             return -1;
         }
+
+        if (time.Equals($"0"))
+            return 0;
 
         var timeUnits = new Dictionary<string, int>
         {
@@ -265,8 +285,8 @@ internal static class Helper
                 throw new ArgumentException($"Invalid time unit '{unit}' in time string.", nameof(time));
             }
         }
-
-        return totalMinutes;
+        
+        return totalMinutes > 0 ? totalMinutes : -1;
     }
 
     public static void PrintToCenterAll(string message)
