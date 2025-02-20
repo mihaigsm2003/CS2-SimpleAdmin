@@ -388,15 +388,23 @@ internal static class Helper
         _ = CS2_SimpleAdmin.DiscordWebhookClientLog.SendMessageAsync(GenerateMessageDiscord(localizer["sa_discord_log_command", $"[{callerName}]({communityUrl})", command]));
     }
 
-    public static void ShowAdminActivity(string messageKey, string? callerName = null, params object[] messageArgs)
+    public static void ShowAdminActivity(string messageKey, string? callerName = null, bool dontPublish = false, params object[] messageArgs)
     {
+        string[] publishActions = ["ban", "gag", "silence", "mute"];
+        
         if (CS2_SimpleAdmin.Instance.Config.OtherSettings.ShowActivityType == 0) return;
         if (CS2_SimpleAdmin._localizer == null) return;
+        
+        if (string.IsNullOrWhiteSpace(callerName))
+            callerName = CS2_SimpleAdmin._localizer["sa_console"];
 
-        // Determine the localized message key
-        var localizedMessageKey = $"{messageKey}";
         var formattedMessageArgs = messageArgs.Select(arg => arg.ToString() ?? string.Empty).ToArray();
-
+        
+        if (dontPublish == false && publishActions.Any(messageKey.Contains))
+        {
+            CS2_SimpleAdmin.SimpleAdminApi?.OnAdminShowActivityEvent(messageKey, callerName, dontPublish, messageArgs);
+        }
+        
         // // Replace placeholder based on showActivityType
         // for (var i = 0; i < formattedMessageArgs.Length; i++)
         // {
@@ -409,8 +417,19 @@ internal static class Helper
         // 		_ => arg
         // 	};
         // }
+        var validPlayers = GetValidPlayers().Where(c => c is { IsValid: true, IsBot: false });
 
-        foreach (var controller in GetValidPlayers().Where(c => c is { IsValid: true, IsBot: false }))
+        if (!validPlayers.Any())
+            return;
+
+        if (CS2_SimpleAdmin.Instance.Config.OtherSettings.ShowActivityType == 3)
+        {
+            validPlayers = validPlayers.Where(c =>
+                AdminManager.PlayerHasPermissions(new SteamID(c.SteamID), "@css/kick") ||
+                AdminManager.PlayerHasPermissions(new SteamID(c.SteamID), "@css/ban"));
+        }
+        
+        foreach (var controller in validPlayers.ToList())
         {
             var currentMessageArgs = (string[])formattedMessageArgs.Clone();
 
@@ -421,13 +440,12 @@ internal static class Helper
                 currentMessageArgs[i] = CS2_SimpleAdmin.Instance.Config.OtherSettings.ShowActivityType switch
                 {
                     1 => arg.Replace("CALLER", AdminManager.PlayerHasPermissions(new SteamID(controller.SteamID), "@css/kick") || AdminManager.PlayerHasPermissions(new SteamID(controller.SteamID), "@css/ban") ? callerName : CS2_SimpleAdmin._localizer["sa_admin"]),
-                    2 => arg.Replace("CALLER", callerName ?? CS2_SimpleAdmin._localizer["sa_console"]),
-                    _ => arg
+                    _ => arg.Replace("CALLER", callerName ?? CS2_SimpleAdmin._localizer["sa_console"]),
                 };
             }
 
             // Send the localized message to each player
-            controller.SendLocalizedMessage(CS2_SimpleAdmin._localizer, localizedMessageKey, currentMessageArgs.Cast<object>().ToArray());
+            controller.SendLocalizedMessage(CS2_SimpleAdmin._localizer, messageKey, currentMessageArgs.Cast<object>().ToArray());
         }
     }
 
@@ -452,7 +470,6 @@ internal static class Helper
             formattedMessageArgs[i] = CS2_SimpleAdmin.Instance.Config.OtherSettings.ShowActivityType switch
             {
                 1 => arg.Replace("CALLER", CS2_SimpleAdmin._localizer["sa_admin"]),
-                2 => arg.Replace("CALLER", callerName ?? CS2_SimpleAdmin._localizer["sa_console"]),
                 _ => arg
             };
         }
@@ -474,7 +491,7 @@ internal static class Helper
     public static void SendDiscordPenaltyMessage(CCSPlayerController? caller, CCSPlayerController? target, string reason, int duration, PenaltyType penalty, IStringLocalizer? localizer)
     {
         if (localizer == null) return;
-        
+
         var penaltySetting = penalty switch
         {
             PenaltyType.Ban => CS2_SimpleAdmin.Instance.Config.Discord.DiscordPenaltyBanSettings,
@@ -488,7 +505,7 @@ internal static class Helper
         var webhookUrl = penaltySetting.FirstOrDefault(s => s.Name.Equals("Webhook"))?.Value;
 
         if (string.IsNullOrEmpty(webhookUrl)) return;
-        
+
         const string defaultCommunityUrl = "<https://steamcommunity.com/profiles/0>";
         var callerCommunityUrl = caller != null ? $"<{new SteamID(caller.SteamID).ToCommunityUrl()}>" : defaultCommunityUrl;
         var targetCommunityUrl = target != null ? $"<{new SteamID(target.SteamID).ToCommunityUrl()}>" : defaultCommunityUrl;
@@ -568,10 +585,10 @@ internal static class Helper
         });
     }
     
-        public static void SendDiscordPenaltyMessage(CCSPlayerController? caller, string steamId, string reason, int duration, PenaltyType penalty, IStringLocalizer? localizer)
+    public static void SendDiscordPenaltyMessage(CCSPlayerController? caller, string steamId, string reason, int duration, PenaltyType penalty, IStringLocalizer? localizer)
     {
         if (localizer == null) return;
-        
+
         var penaltySetting = penalty switch
         {
             PenaltyType.Ban => CS2_SimpleAdmin.Instance.Config.Discord.DiscordPenaltyBanSettings,
