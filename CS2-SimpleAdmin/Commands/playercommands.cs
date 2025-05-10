@@ -679,7 +679,7 @@ public partial class CS2_SimpleAdmin
     }
 
     [CommandHelper(1, "<#userid or name>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     public void OnRespawnCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var callerName = caller == null ? _localizer?["sa_console"] ?? "Console" : caller.PlayerName;
