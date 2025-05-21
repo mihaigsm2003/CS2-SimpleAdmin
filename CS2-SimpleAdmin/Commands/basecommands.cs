@@ -386,6 +386,16 @@ public partial class CS2_SimpleAdmin
 
         command.ReplyToCommand("Reloaded sql admins and groups");
     }
+    
+    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [RequiresPermissions("@css/root")]
+    public void OnRelBans(CCSPlayerController? caller, CommandInfo command)
+    {
+        if (Database == null) return;
+
+        _ = Instance.CacheManager.ForceReInitializeCacheAsync();
+        command.ReplyToCommand("Reloaded bans");
+    }
 
     public void ReloadAdmins(CCSPlayerController? caller)
     {
@@ -509,6 +519,10 @@ public partial class CS2_SimpleAdmin
                         printMethod($"• Total Mutes: \"{playerInfo.TotalMutes}\"");
                         printMethod($"• Total Silences: \"{playerInfo.TotalSilences}\"");
                         printMethod($"• Total Warns: \"{playerInfo.TotalWarns}\"");
+
+                        var chunkedAccounts = playerInfo.AccountsAssociated.ChunkBy(3).ToList();
+                        foreach (var chunk in chunkedAccounts)
+                            printMethod($"• Associated Accounts: \"{string.Join(", ", chunk.Select(a => $"{a.PlayerName} ({a.SteamId})"))}\"");
                     }
 
                     printMethod($"--------- END INFO ABOUT \"{player.PlayerName}\" ---------");
@@ -650,7 +664,6 @@ public partial class CS2_SimpleAdmin
         Helper.LogCommand(caller, command);
 
         var playersToTarget = targets.Players.Where(player => player is { IsValid: true, IsBot: false }).ToList();
-
         if (playersToTarget.Count > 1)
             return;
 
@@ -708,20 +721,20 @@ public partial class CS2_SimpleAdmin
             if (caller != null)
             {
                 caller.PrintToConsole("--------- PLAYER LIST ---------");
-                playersToTarget.ForEach(player =>
+                foreach (var player in playersToTarget)
                 {
                     caller.PrintToConsole(
                         $"• [#{player.UserId}] \"{player.PlayerName}\" (IP Address: \"{(AdminManager.PlayerHasPermissions(new SteamID(caller.SteamID), "@css/showip") ? player.IpAddress?.Split(":")[0] : "Unknown")}\" SteamID64: \"{player.SteamID}\")");
-                });
+                };
                 caller.PrintToConsole("--------- END PLAYER LIST ---------");
             }
             else
             {
                 Server.PrintToConsole("--------- PLAYER LIST ---------");
-                playersToTarget.ForEach(player =>
+                foreach (var player in playersToTarget)
                 {
                     Server.PrintToConsole($"• [#{player.UserId}] \"{player.PlayerName}\" (IP Address: \"{player.IpAddress?.Split(":")[0]}\" SteamID64: \"{player.SteamID}\")");
-                });
+                };
                 Server.PrintToConsole("--------- END PLAYER LIST ---------");
             }
         }
@@ -789,6 +802,8 @@ public partial class CS2_SimpleAdmin
                 Kick(caller, player, reason, callerName, command);
             }
         });
+        
+        Helper.LogCommand(caller, command);
     }
 
     public void Kick(CCSPlayerController? caller, CCSPlayerController player, string? reason = "Unknown", string? callerName = null, CommandInfo? command = null)
@@ -828,8 +843,6 @@ public partial class CS2_SimpleAdmin
         // Log the command and send Discord notification
         if (command == null)
             Helper.LogCommand(caller, $"css_kick {(string.IsNullOrEmpty(player.PlayerName) ? player.SteamID.ToString() : player.PlayerName)} {reason}");
-        else
-            Helper.LogCommand(caller, command);
         
         SimpleAdminApi?.OnPlayerPenaltiedEvent(playerInfo, adminInfo, PenaltyType.Kick, reason, -1, null);
     }
