@@ -1087,7 +1087,7 @@ public partial class CS2_SimpleAdmin
     /// <param name="caller">The player issuing the command.</param>
     /// <param name="command">The command containing the workshop map identifier.</param>
     [CommandHelper(1, "<name or id>")]
-    [RequiresPermissions("@css/changemap")]
+    [RequiresPermissions("@css/cheats")]
     public void OnWorkshopMapCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var map = command.GetArg(1);
