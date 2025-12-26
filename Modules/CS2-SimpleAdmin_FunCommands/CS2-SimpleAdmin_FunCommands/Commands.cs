@@ -153,7 +153,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(2, "<#userid or name> <hp>")]
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     private void OnSetHpCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (int.TryParse(command.GetArg(2), out var hp))
@@ -176,7 +176,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(2, "<#userid or name> <speed>")]
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     private void OnSetSpeedCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var speed))
@@ -206,7 +206,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(2, "<#userid or name> <gravity>")]
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     private void OnSetGravityCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var gravity))
@@ -236,7 +236,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(2, "<#userid or name> <money>")]
-    [RequiresPermissions("@css/slay")]
+    [RequiresPermissions("@css/cheats")]
     private void OnSetMoneyCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (int.TryParse(command.GetArg(2), out var money))
