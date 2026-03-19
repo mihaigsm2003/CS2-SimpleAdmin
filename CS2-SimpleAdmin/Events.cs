@@ -448,13 +448,13 @@ public partial class CS2_SimpleAdmin
 
     private void OnMapStart(string mapName)
     {
-        if (!ServerLoaded || ServerId == null)
-            AddTimer(2.0f, OnGameServerSteamAPIActivated);
-
         if (Config.OtherSettings.ReloadAdminsEveryMapChange && ServerLoaded && ServerId != null)
-            AddTimer(5.0f, () => ReloadAdmins(null));
+            ReloadAdmins(null);
 
         AddTimer(1.0f, ServerManager.CheckHibernationStatus);
+        
+        if (!ServerLoaded || ServerId == null)
+            AddTimer(1.5f, OnGameServerSteamAPIActivated);
 
         // AddTimer(34, () =>
         // {

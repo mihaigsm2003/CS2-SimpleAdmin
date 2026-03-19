@@ -31,7 +31,7 @@ public class ServerManager
     /// </summary>
     public void LoadServerData()
     {
-        CS2_SimpleAdmin.Instance.AddTimer(2.0f, () =>
+        CS2_SimpleAdmin.Instance.AddTimer(1.0f, () =>
         {
             if (CS2_SimpleAdmin.ServerLoaded || CS2_SimpleAdmin.DatabaseProvider == null) return;
 
@@ -103,14 +103,12 @@ public class ServerManager
                     CS2_SimpleAdmin.ServerId = serverId;
                     CS2_SimpleAdmin._logger?.LogInformation("Loaded server with ip {ip}", ipAddress);
 
-                    if (CS2_SimpleAdmin.ServerId != null)
-                    {
-                        await Server.NextWorldUpdateAsync(() => CS2_SimpleAdmin.Instance.ReloadAdmins(null));
-                    }
+CS2_SimpleAdmin.ServerLoaded = true;
 
-                    CS2_SimpleAdmin.ServerLoaded = true;
                     if (CS2_SimpleAdmin.Instance.CacheManager != null)
+                    {
                         await CS2_SimpleAdmin.Instance.CacheManager.InitializeCacheAsync();
+                    }
                 }
                 catch (Exception ex)
                 {
