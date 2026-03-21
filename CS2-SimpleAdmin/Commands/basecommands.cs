@@ -1274,6 +1274,6 @@ public partial class CS2_SimpleAdmin
         // TODO: Localize
         var name = admin == null ? _localizer?["sa_console"] ?? "Console" : admin.PlayerName;
         Server.PrintToChatAll($"[SA] {name}: Restarting game...");
-        Server.ExecuteCommand("mp_restartgame 2");
+        Server.ExecuteCommand("mp_restartgame 2");//
     }
 }
