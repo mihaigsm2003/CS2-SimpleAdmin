@@ -13,7 +13,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     // =================================
 
     [CommandHelper(1, "<#userid or name>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     private void OnNoclipCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var targets = _sharedApi!.GetTarget(command);
@@ -31,7 +31,7 @@ public partial class CS2_SimpleAdmin_FunCommands
         });
     }
 
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     [CommandHelper(minArgs: 1, usage: "<#userid or name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     private void OnGodCommand(CCSPlayerController? caller, CommandInfo command)
     {
@@ -90,7 +90,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(1, "<#userid or name>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     private void OnRespawnCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var targets = _sharedApi!.GetTarget(command);
@@ -109,7 +109,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(2, "<#userid or name> <weapon>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     private void OnGiveWeaponCommand(CCSPlayerController? caller, CommandInfo command)
     {
         var weaponName = command.GetArg(2);
@@ -153,7 +153,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(2, "<#userid or name> <hp>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     private void OnSetHpCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (int.TryParse(command.GetArg(2), out var hp))
@@ -176,7 +176,7 @@ public partial class CS2_SimpleAdmin_FunCommands
     }
 
     [CommandHelper(2, "<#userid or name> <speed>")]
-    [RequiresPermissions("@css/cheats")]
+    [RequiresPermissions("@css/root")]
     private void OnSetSpeedCommand(CCSPlayerController? caller, CommandInfo command)
     {
         if (float.TryParse(command.GetArg(2), NumberStyles.Float, CultureInfo.InvariantCulture, out var speed))
